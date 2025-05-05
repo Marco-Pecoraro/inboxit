@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>inboxit</title>
+    <!-- Aggiunto ?v=1 per evitare cache -->
+    <link rel="stylesheet" href="/home/styles.css?v=1">
+    <!-- Carica sanitize-html con fallback -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sanitize-html/2.13.0/sanitize-html.min.js"
+        integrity="sha512-Zk5CTpJ1vfVj3Xv4qF4Q4+dC0EW6sk4p0HFv/BlVUbTbU3Yv3+hgq+/0kG1vO4jTa9/Niw+THX/4h0oPHN7SaoA=="
+        crossorigin="anonymous"></script>
+    <script>
+        // Fallback per sanitizeHtml
+        window.sanitizeHtml = window.sanitizeHtml || function (html) {
+            console.warn('sanitizeHtml non disponibile, usando fallback');
+            return html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                .replace(/<[^>]+>/g, '');
+        };
+    </script>
+</head>
+
+<body>
+    <div class="overlay" id="overlay"></div>
+    <div class="main-app">
+        <header class="app-header">
+            <h1 class="app-title">inboxit</h1>
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="Cerca email...">
+            </div>
+            <div class="header-actions">
+                <select class="email-limit" id="emailLimit">
+                    <option value="150">150 email</option>
+                    <option value="300">300 email</option>
+                    <option value="all">Tutte</option>
+                </select>
+                <button class="compose-btn">Scrivi</button>
+                <button class="settings-btn">Impostazioni</button>
+                <button class="sync-btn" id="sync-button">Sincronizza</button>
+            </div>
+        </header>
+        <nav class="email-nav">
+            <ul>
+                <li data-category="inbox" class="active">Posta in arrivo <span class="email-count">0</span></li>
+                <li data-category="sent">Inviate <span class="email-count">0</span></li>
+                <li data-category="trash">Cestino <span class="email-count">0</span></li>
+                <li data-category="calendar">Calendario <span class="email-count">0</span></li>
+                <li data-category="meetings">Riunioni <span class="email-count">0</span></li>
+            </ul>
+        </nav>
+        <section class="email-list" id="emailList">
+            <div class="email-header">
+                <div>Mittente</div>
+                <div>Oggetto</div>
+                <div>Data</div>
+            </div>
+        </section>
+        <section class="calendar-section" id="calendarSection">
+            <h2>Calendario</h2>
+            <div class="calendar-header">
+                <button class="calendar-nav prev">←</button>
+                <span class="calendar-month" id="calendarMonth"></span>
+                <button class="calendar-nav next">→</button>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+            <div class="events" id="eventsList">
+                <h3>Eventi</h3>
+            </div>
+        </section>
+    </div>
+    <div class="compose-modal" id="composeModal">
+        <div class="compose-header">
+            <h3>Nuova Email</h3>
+            <button class="close-btn">×</button>
+        </div>
+        <div class="compose-body">
+            <input type="text" class="compose-input" placeholder="Destinatario">
+            <input type="text" class="compose-subject" placeholder="Oggetto">
+            <textarea class="compose-text" placeholder="Testo dell'email"></textarea>
+        </div>
+        <div class="compose-footer">
+            <button class="send-btn">Invia</button>
+        </div>
+    </div>
+    <div class="settings-modal" id="settingsModal">
+        <div class="settings-header">
+            <h3>Impostazioni</h3>
+            <button class="close-btn">×</button>
+        </div>
+        <div class="settings-body">
+            <div class="settings-section">
+                <h4>Preferenze</h4>
+                <div class="settings-item">
+                    <input type="checkbox" id="notifications">
+                    <label for="notifications">Notifiche</label>
+                </div>
+                <div class="settings-item">
+                    <input type="checkbox" id="darkTheme">
+                    <label for="darkTheme">Tema scuro</label>
+                </div>
+                <div class="settings-item">
+                    <input type="checkbox" id="showEmailCount" checked>
+                    <label for="showEmailCount">Mostra conteggio email</label>
+                </div>
+            </div>
+            <div class="account-section">
+                <h4>Account</h4>
+                <div class="account-item">
+                    <span>Nome</span>
+                    <input type="text" id="accountName" placeholder="Nome">
+                </div>
+                <div class="account-item">
+                    <span>Email</span>
+                    <input type="email" id="accountEmail" placeholder="Email">
+                </div>
+                <button class="save-account-btn">Salva</button>
+                <button class="logout-btn">Logout</button>
+            </div>
+        </div>
+        <div class="settings-footer">
+            <button class="save-btn">Salva</button>
+        </div>
+    </div>
+    <div class="event-modal" id="eventModal">
+        <div class="event-header">
+            <h3>Aggiungi Evento</h3>
+            <button class="close-btn">×</button>
+        </div>
+        <div class="event-body">
+            <input type="text" id="eventTitle" placeholder="Titolo evento">
+            <input type="date" id="eventDate">
+            <input type="time" id="eventTime">
+        </div>
+        <div class="event-footer">
+            <button class="add-event-btn">Aggiungi</button>
+        </div>
+    </div>
+    <div class="email-preview-modal" id="emailPreviewModal">
+        <div class="email-preview-header">
+            <h3>Anteprima email</h3>
+            <button class="close-btn">×</button>
+        </div>
+        <div class="email-preview-body">
+            <p><strong>Mittente:</strong> <span id="previewSender"></span></p>
+            <p><strong>Oggetto:</strong> <span id="previewSubject"></span></p>
+            <p><strong>Data:</strong> <span id="previewTime"></span></p>
+            <div id="previewBody"></div>
+        </div>
+        <div class="email-preview-footer">
+            <button class="delete-btn">Elimina</button>
+            <button class="reply-btn">Rispondi</button>
+            <button class="ai-reply-btn">Rispondi con AI</button>
+        </div>
+    </div>
+    <script defer src="/home/script.js?v=1"></script>
+</body>
+
+</html>

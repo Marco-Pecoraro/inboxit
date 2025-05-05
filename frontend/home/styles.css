@@ -1,0 +1,964 @@
+/* frontend/home/styles.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+}
+
+body {
+    background: #ffffff;
+    color: #000000;
+    transition: all 0.3s ease;
+}
+
+body.dark {
+    background: #000000;
+    color: #ffffff;
+}
+
+/* Overlay */
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Main App */
+.main-app {
+    max-width: 1400px;
+    margin: 20px auto;
+    padding: 20px;
+}
+
+/* Header */
+.app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 20px;
+    background: #ffffff;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+body.dark .app-header {
+    background: #ffffff;
+}
+
+.app-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #000000;
+    text-decoration: underline;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+body.dark .app-title {
+    color: #000000;
+}
+
+.app-title:hover {
+    color: #cccccc;
+}
+
+body.dark .app-title:hover {
+    color: #333333;
+}
+
+.search-bar {
+    flex: 1;
+    max-width: 400px;
+    margin: 0 20px;
+}
+
+#searchInput {
+    width: 100%;
+    padding: 10px 15px;
+    border: 1px solid #ccc;
+    border-radius: 20px;
+    font-size: 15px;
+    background: #ffffff;
+    transition: all 0.3s ease;
+}
+
+body.dark #searchInput {
+    background: #000000;
+    border-color: #ffffff;
+    color: #ffffff;
+}
+
+#searchInput:focus {
+    border-color: #ffffff;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
+}
+
+body.dark #searchInput:focus {
+    border-color: #000000;
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.2);
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.email-limit,
+.compose-btn,
+.settings-btn,
+.sync-btn {
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.compose-btn {
+    border: none;
+    background-color: #000;
+    color: #fff;
+}
+
+.email-limit {
+    border: 1px solid #000000;
+    background: #ffffff;
+    color: #000000;
+}
+
+body.dark .email-limit {
+    background: #000000;
+    border-color: #ffffff;
+    color: #ffffff;
+}
+
+.email-limit:focus {
+    outline: none;
+}
+
+body.dark .email-limit:focus {
+    border-color: #000000;
+}
+
+.sync-btn {
+    background: #ffffff;
+    color: #000000;
+    border: 1px solid #000;
+}
+
+body.dark .compose-btn,
+body.dark .sync-btn {
+    background: #ffffff;
+    color: #000000;
+}
+
+.compose-btn:hover,
+.sync-btn:hover {
+    background: #ccc;
+    transform: translateY(-1px);
+}
+
+.compose-btn:hover {
+    background: #313131;
+}
+
+body.dark .compose-btn:hover,
+body.dark .sync-btn:hover {
+    background: #cccccc;
+}
+
+.settings-btn {
+    background: #ffffff;
+    border: 1px solid #000000;
+    color: #000000;
+}
+
+body.dark .settings-btn {
+    background: #000000;
+    border-color: #ffffff;
+    color: #ffffff;
+}
+
+.settings-btn:hover {
+    background: #cccccc;
+    transform: translateY(-1px);
+}
+
+body.dark .settings-btn:hover {
+    background: #333333;
+}
+
+/* Navigation */
+.email-nav {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 10px;
+    margin-bottom: 20px;
+}
+
+body.dark .email-nav {
+    background: #000000;
+}
+
+.email-nav ul {
+    display: flex;
+    list-style: none;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.email-nav li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    font-size: 15px;
+    font-weight: 500;
+    color: #5f5f5f;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 20px;
+}
+
+
+body.dark .email-nav li {
+    color: #ffffff;
+}
+
+.email-nav li:hover {
+    background: #333333;
+    color: #fff;
+}
+
+body.dark .email-nav li:hover {
+    background: #fff;
+}
+
+.email-nav li.active {
+    background: #000000;
+    color: #ffffff;
+}
+
+body.dark .email-nav li.active {
+    background: #000000;
+    color: #ffffff;
+}
+
+.email-count {
+    background: #ff0000;
+    color: #ffffff;
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 12px;
+}
+
+/* Email List */
+.email-list {
+    background: #ffffff;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+body.dark .email-list {
+    background: #000000;
+}
+
+.email-header {
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr;
+    padding: 15px 20px;
+    background: #000000;
+    font-weight: 600;
+    color: #ffffff;
+    border-bottom: 1px solid #ffffff;
+}
+
+body.dark .email-header {
+    background: #ffffff;
+    color: #000000;
+    border-bottom-color: #000000;
+}
+
+.email-item {
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr;
+    gap: 10px;
+    padding: 15px 20px;
+    border-bottom: 1px solid #ccc;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.email-item:hover {
+    background: #cccccc;
+}
+
+body.dark .email-item:hover {
+    background: #333333;
+}
+
+.email-sender {
+    font-weight: 600;
+    color: #000000;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+body.dark .email-sender {
+    color: #ffffff;
+}
+
+.email-subject {
+    font-weight: 500;
+    color: #000000;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+body.dark .email-subject {
+    color: #ffffff;
+}
+
+.email-time {
+    color: #000000;
+    text-align: right;
+    font-size: 14px;
+}
+
+body.dark .email-time {
+    color: #ffffff;
+}
+
+.email-preview {
+    grid-column: 1 / -1;
+    color: #000000;
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+body.dark .email-preview {
+    color: #ffffff;
+}
+
+/* Calendar */
+.calendar-section {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 20px;
+    display: none;
+}
+
+body.dark .calendar-section {
+    background: #000000;
+}
+
+.calendar-section h2 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+body.dark .calendar-section h2 {
+    color: #ffffff;
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.calendar-month {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+body.dark .calendar-month {
+    color: #ffffff;
+}
+
+.calendar-nav {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 5px 10px;
+    color: #000000;
+    transition: all 0.3s ease;
+}
+
+body.dark .calendar-nav {
+    color: #ffffff;
+}
+
+.calendar-nav:hover {
+    background: #cccccc;
+    border-radius: 8px;
+}
+
+body.dark .calendar-nav:hover {
+    background: #333333;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    text-align: center;
+}
+
+.calendar-day {
+    font-weight: 600;
+    color: #000000;
+    padding: 10px;
+}
+
+body.dark .calendar-day {
+    color: #ffffff;
+}
+
+.calendar-date {
+    padding: 10px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.calendar-date:hover {
+    background: #cccccc;
+}
+
+body.dark .calendar-date:hover {
+    background: #333333;
+}
+
+.calendar-date.empty {
+    background: none;
+    cursor: default;
+}
+
+.calendar-date.today {
+    background: #000000;
+    color: #ffffff;
+}
+
+body.dark .calendar-date.today {
+    background: #ffffff;
+    color: #000000;
+}
+
+.calendar-date.event {
+    background: #cccccc;
+    position: relative;
+}
+
+body.dark .calendar-date.event {
+    background: #333333;
+}
+
+.calendar-date.event::after {
+    content: '';
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 6px;
+    background: #000000;
+    border-radius: 50%;
+}
+
+body.dark .calendar-date.event::after {
+    background: #ffffff;
+}
+
+.events {
+    margin-top: 20px;
+}
+
+.events h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+body.dark .events h3 {
+    color: #ffffff;
+}
+
+.event-item {
+    padding: 10px;
+    background: #ffffff;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    transition: all 0.3s ease;
+}
+
+body.dark .event-item {
+    background: #000000;
+}
+
+.event-item:hover {
+    background: #cccccc;
+}
+
+body.dark .event-item:hover {
+    background: #333333;
+}
+
+/* Modals */
+.compose-modal,
+.settings-modal,
+.event-modal,
+.email-preview-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.9);
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s ease;
+    overflow-y: auto;
+}
+
+body.dark .compose-modal,
+body.dark .settings-modal,
+body.dark .event-modal,
+body.dark .email-preview-modal {
+    background: #000000;
+    box-shadow: 0 4px 20px rgba(255, 255, 255, 0.1);
+}
+
+.compose-modal.active,
+.settings-modal.active,
+.event-modal.active,
+.email-preview-modal.active {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    pointer-events: auto;
+}
+
+.compose-header,
+.settings-header,
+.event-header,
+.email-preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: #000000;
+    color: #ffffff;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+body.dark .compose-header,
+body.dark .settings-header,
+body.dark .event-header,
+body.dark .email-preview-header {
+    background: #ffffff;
+    color: #000000;
+}
+
+.compose-header h3,
+.settings-header h3,
+.event-header h3,
+.email-preview-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #ffffff;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+body.dark .close-btn {
+    color: #000000;
+}
+
+.close-btn:hover {
+    color: #cccccc;
+}
+
+body.dark .close-btn:hover {
+    color: #333333;
+}
+
+.compose-body,
+.settings-body,
+.event-body,
+.email-preview-body {
+    padding: 20px;
+}
+
+body.dark .compose-body,
+body.dark .settings-body,
+body.dark .event-body,
+body.dark .email-preview-body {
+    color: #ffffff;
+}
+
+.email-preview-body {
+    max-height: 400px;
+    overflow-y: auto;
+    line-height: 1.6;
+    font-size: 15px;
+}
+
+.email-preview-body p {
+    margin-bottom: 10px;
+}
+
+.email-preview-body a {
+    color: #00b7eb;
+    text-decoration: underline;
+}
+
+body.dark .email-preview-body a {
+    color: #00b7eb;
+}
+
+.compose-input,
+.compose-subject,
+.compose-text,
+.settings-body input,
+.settings-body select,
+.event-body input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #000000;
+    border-radius: 8px;
+    font-size: 15px;
+    background: #ffffff;
+    transition: all 0.3s ease;
+}
+
+body.dark .compose-input,
+body.dark .compose-subject,
+body.dark .compose-text,
+body.dark .settings-body input,
+body.dark .settings-body select,
+body.dark .event-body input {
+    background: #000000;
+    border-color: #ffffff;
+    color: #ffffff;
+}
+
+.compose-input:focus,
+.compose-subject:focus,
+.compose-text:focus,
+.settings-body input:focus,
+.settings-body select:focus,
+.event-body input:focus {
+    border-color: #ffffff;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
+}
+
+body.dark .compose-input:focus,
+body.dark .compose-subject:focus,
+body.dark .compose-text:focus,
+body.dark .settings-body input:focus,
+body.dark .settings-body select:focus,
+body.dark .event-body input:focus {
+    border-color: #000000;
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.2);
+}
+
+.compose-text {
+    height: 200px;
+    resize: none;
+}
+
+.settings-section {
+    margin-bottom: 20px;
+}
+
+.settings-section h4 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+body.dark .settings-section h4 {
+    color: #ffffff;
+}
+
+.settings-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.account-section {
+    padding: 15px;
+    background: #ffffff;
+    border-radius: 8px;
+}
+
+body.dark .account-section {
+    background: #000000;
+}
+
+.account-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.account-item span {
+    font-weight: 500;
+}
+
+.account-item input {
+    width: 70%;
+}
+
+.save-account-btn,
+.logout-btn {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.save-account-btn {
+    background: #000000;
+    color: #ffffff;
+}
+
+body.dark .save-account-btn {
+    background: #ffffff;
+    color: #000000;
+}
+
+.save-account-btn:hover {
+    background: #333333;
+    transform: translateY(-1px);
+}
+
+body.dark .save-account-btn:hover {
+    background: #cccccc;
+}
+
+.logout-btn {
+    background: #ff0000;
+    color: #ffffff;
+}
+
+.logout-btn:hover {
+    background: #cc0000;
+    transform: translateY(-1px);
+}
+
+.compose-footer,
+.settings-footer,
+.event-footer,
+.email-preview-footer {
+    padding: 15px 20px;
+    border-top: 1px solid #000000;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+body.dark .compose-footer,
+body.dark .settings-footer,
+body.dark .event-footer,
+body.dark .email-preview-footer {
+    border-top-color: #ffffff;
+}
+
+.send-btn,
+.save-btn,
+.add-event-btn,
+.delete-btn,
+.reply-btn,
+.ai-reply-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.send-btn,
+.save-btn,
+.add-event-btn,
+.reply-btn {
+    background: #000000;
+    color: #ffffff;
+}
+
+body.dark .send-btn,
+body.dark .save-btn,
+body.dark .add-event-btn,
+body.dark .reply-btn {
+    background: #ffffff;
+    color: #000000;
+}
+
+.send-btn:hover,
+.save-btn:hover,
+.add-event-btn:hover,
+.reply-btn:hover {
+    background: #333333;
+    transform: translateY(-1px);
+}
+
+body.dark .send-btn:hover,
+body.dark .save-btn:hover,
+body.dark .add-event-btn:hover,
+body.dark .reply-btn:hover {
+    background: #cccccc;
+}
+
+.delete-btn {
+    background: #ff0000;
+    color: #ffffff;
+}
+
+.delete-btn:hover {
+    background: #cc0000;
+    transform: translateY(-1px);
+}
+
+.ai-reply-btn {
+    background: #00b7eb;
+    color: #ffffff;
+}
+
+.ai-reply-btn:hover {
+    background: #009bc7;
+    transform: translateY(-1px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .main-app {
+        padding: 10px;
+    }
+
+    .app-header {
+        flex-direction: column;
+        gap: 15px;
+        padding: 15px;
+    }
+
+    .search-bar {
+        max-width: 100%;
+        margin: 0;
+    }
+
+    .email-nav ul {
+        gap: 10px;
+    }
+
+    .email-nav li {
+        padding: 8px 15px;
+        font-size: 14px;
+    }
+
+    .email-item {
+        grid-template-columns: 1fr;
+        gap: 5px;
+    }
+
+    .email-sender,
+    .email-subject,
+    .email-time,
+    .email-preview {
+        grid-column: 1;
+    }
+
+    .email-time {
+        text-align: left;
+    }
+
+    .compose-modal,
+    .settings-modal,
+    .event-modal,
+    .email-preview-modal {
+        width: 95%;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-actions {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .email-limit,
+    .compose-btn,
+    .settings-btn,
+    .sync-btn {
+        padding: 8px 15px;
+        font-size: 13px;
+    }
+
+    .calendar-grid {
+        gap: 5px;
+    }
+
+    .calendar-day,
+    .calendar-date {
+        padding: 8px;
+        font-size: 13px;
+    }
+}
+
+@keyframes modalPop {
+    0% {
+        transform: translate(-50%, -50%) scale(0.9);
+        opacity: 0;
+    }
+
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+}
