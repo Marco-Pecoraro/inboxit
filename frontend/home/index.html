@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>inboxit</title>
+    <link rel="icon" href="/frontend/img/inboxit-logo.png">
     <!-- Aggiunto ?v=1 per evitare cache -->
     <link rel="stylesheet" href="/home/styles.css?v=1">
     <!-- Carica sanitize-html con fallback -->
@@ -31,8 +32,9 @@
             </div>
             <div class="header-actions">
                 <select class="email-limit" id="emailLimit">
+                    <option value="50">50 email</option>
+                    <option value="100">100 email</option>
                     <option value="150">150 email</option>
-                    <option value="300">300 email</option>
                     <option value="all">Tutte</option>
                 </select>
                 <button class="compose-btn">Scrivi</button>

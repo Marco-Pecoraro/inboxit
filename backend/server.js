@@ -1,21 +1,56 @@
-// server.js
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
+
+// Verifica che MONGO_URI sia definito
+if (!process.env.MONGO_URI) {
+    console.error('Errore: MONGO_URI non definito nel file .env');
+    process.exit(1);
+}
+
+console.log('MONGO_URI:', process.env.MONGO_URI);
+console.log('DB_NAME:', process.env.DB_NAME);
+console.log('CLIENT_ID:', process.env.CLIENT_ID);
+
 const express = require('express');
 const mongoose = require('mongoose');
 const passport = require('passport');
+const jwt = require('jsonwebtoken');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const emailController = require('./controller');
-const { verifyToken } = require('./middleware');
+const emailController = require('./controllers/emailController');
 
 const app = express();
+
+// Middleware per verificare il token JWT
+const verifyToken = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ message: 'Token mancante o malformato' });
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (err) {
+        return res.status(403).json({ message: 'Token non valido o scaduto' });
+    }
+};
 
 // Configura middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(passport.initialize());
 
-// Configura serving dei file statici
-app.use('/home', express.static('frontend/home'));
+// Serve la cartella img
+app.use('/img', express.static(path.join(__dirname, '../frontend/img')));
+
+// Serve la cartella login
+app.use(express.static(path.join(__dirname, '../frontend/login')));
+
+// Serve la cartella home
+app.use('/home', express.static(path.join(__dirname, '../frontend/home')));
 
 // Configura Passport per Google OAuth
 passport.use(new GoogleStrategy({
@@ -42,22 +77,23 @@ app.get('/auth/google', passport.authenticate('google', {
 
 app.get('/auth/google/callback', passport.authenticate('google', { session: false }), (req, res) => {
     const token = req.user.accessToken;
-    res.redirect(`/home?token=${token}`);
+    const jwtToken = jwt.sign({ accessToken: token }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    res.redirect(`/home?token=${jwtToken}`);
 });
 
-// Rotte API
+// Rotte API protette
 app.get('/api/emails', verifyToken, emailController.getEmails);
 app.post('/api/emails/sync', verifyToken, emailController.syncEmails);
 app.post('/api/emails/trash', verifyToken, emailController.trashEmail);
 
-// Rotta per la pagina principale
+// Rotta per la pagina principale (login)
 app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/frontend/index.html');
+    res.sendFile(path.join(__dirname, '../frontend/login/index.html'));
 });
 
 // Rotta per la pagina home
 app.get('/home', (req, res) => {
-    res.sendFile(__dirname + '/frontend/home/index.html');
+    res.sendFile(path.join(__dirname, '../frontend/home/index.html'));
 });
 
 // Avvio del server

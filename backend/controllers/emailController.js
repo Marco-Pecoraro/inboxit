@@ -2,8 +2,9 @@ const { syncEmailsFromGmail, trashEmail, getEmails } = require('../services/emai
 
 exports.syncEmails = async (req, res) => {
     try {
-        const token = req.headers.authorization?.split('Bearer ')[1];
+        const token = req.user.accessToken; // Estratto dal JWT
         console.log('Token ricevuto in syncEmails:', token ? 'Presente' : 'Assente');
+
         if (!token) {
             return res.status(401).json({ message: 'Token mancante' });
         }
@@ -19,8 +20,9 @@ exports.syncEmails = async (req, res) => {
 
 exports.trashEmail = async (req, res) => {
     try {
-        const token = req.headers.authorization?.split('Bearer ')[1];
+        const token = req.user.accessToken; // Estratto dal JWT
         console.log('Token ricevuto in trashEmail:', token ? 'Presente' : 'Assente');
+
         if (!token) {
             return res.status(401).json({ message: 'Token mancante' });
         }
@@ -41,8 +43,15 @@ exports.trashEmail = async (req, res) => {
 
 exports.getEmails = async (req, res) => {
     try {
+        const token = req.user.accessToken; // Estratto dal JWT
+        console.log('Token ricevuto in getEmails:', token ? 'Presente' : 'Assente');
+
+        if (!token) {
+            return res.status(401).json({ message: 'Token mancante' });
+        }
+
         const limit = parseInt(req.query.limit) || 150;
-        const emails = await getEmails(limit === 0 ? null : limit);
+        const emails = await getEmails(token, limit === 0 ? null : limit);
         console.log('Email recuperate:', emails.length);
         res.json(emails);
     } catch (err) {

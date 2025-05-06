@@ -49,7 +49,7 @@ let currentYear = currentDate.getFullYear();
 let currentCategory = 'inbox';
 let events = [];
 let currentEmail = null;
-let emailLimit = 150;
+let emailLimit = 50; // Valore predefinito aggiornato
 
 // Inizializzazione
 document.addEventListener('DOMContentLoaded', async () => {
@@ -78,6 +78,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Carica dati iniziali
         await loadEmailsToPage();
+        // Sincronizzazione automatica al caricamento se non ci sono email
+        if (document.querySelectorAll('.email-item').length === 0) {
+            console.log('Nessuna email trovata, avvio sincronizzazione automatica');
+            syncBtn.disabled = true;
+            syncBtn.textContent = 'Sincronizzazione...';
+            try {
+                await syncEmails();
+                await loadEmailsToPage();
+            } catch (err) {
+                console.error('Errore sincronizzazione automatica:', err);
+                alert('Errore sincronizzazione automatica: ' + err.message);
+            } finally {
+                syncBtn.disabled = false;
+                syncBtn.textContent = 'Sincronizza';
+            }
+        }
+
         updateEmailCounts();
         toggleEmailCountVisibility(showEmailCountCheckbox.checked);
         filterEmails('inbox');
@@ -111,10 +128,11 @@ async function loadEmailsToPage() {
         }
 
         const emails = await response.json();
+        console.log('Emails caricate:', emails);
         renderEmailList(emails);
     } catch (err) {
         console.error('Errore caricamento email:', err);
-        alert('Errore nel caricamento delle email: ' + err.message);
+        throw err; // Propaga l'errore per gestirlo nel chiamante
     }
 }
 
@@ -126,6 +144,8 @@ function renderEmailList(emails) {
             <div>Data</div>
         </div>
     `;
+
+    console.log('Rendering emails:', emails);
 
     emails.forEach(email => {
         const emailItem = document.createElement('div');
@@ -153,14 +173,12 @@ function renderEmailList(emails) {
 function filterEmails(category, searchTerm = '') {
     currentCategory = category;
 
+    console.log('Filtrando per categoria:', category);
+
     // Aggiorna stato attivo della navigazione
     navItems.forEach(item => {
         item.classList.toggle('active', item.getAttribute('data-category') === category);
     });
-
-    // Gestisci visibilità delle sezioni
-    emailList.style.display = category === 'calendar' ? 'none' : 'block';
-    calendarSection.style.display = category === 'calendar' ? 'block' : 'none';
 
     // Filtra email solo se non siamo nella sezione calendario
     if (category !== 'calendar') {
@@ -174,6 +192,8 @@ function filterEmails(category, searchTerm = '') {
                 item.getAttribute('data-sender').toLowerCase().includes(searchTerm) ||
                 item.getAttribute('data-subject').toLowerCase().includes(searchTerm) ||
                 item.getAttribute('data-body').toLowerCase().includes(searchTerm);
+
+            console.log('Email corrisponde al filtro?', matchesCategory && matchesSearch);
 
             item.style.display = matchesCategory && matchesSearch ? 'grid' : 'none';
         });
@@ -315,19 +335,74 @@ function attachEmailListeners() {
                 const sender = item.getAttribute('data-sender') || 'Sconosciuto';
                 const subject = item.getAttribute('data-subject') || '(senza oggetto)';
                 const time = item.getAttribute('data-time') || 'N/D';
-                const body = item.getAttribute('data-body') || '(Nessun contenuto)';
+                let body = item.getAttribute('data-body') || '(Nessun contenuto)';
+
+                // Pulizia del testo
+                body = body
+                    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '') // Rimuove tag <style>
+                    .replace(/style="[^"]*"/gi, '') // Rimuove attributi style inline
+                    .replace(/\n{2,}/g, '\n\n') // Riduce multiple linee vuote
+                    .replace(/\( http:\/\/[^\)]+\)/g, '') // Rimuove link tra parentesi
+                    .replace(/http:\/\/[^\s]+/g, '') // Rimuove altri link non desiderati
+                    .replace(/\s{2,}/g, ' ') // Riduce spazi multipli
+                    .trim();
+
+                // Separazione del contenuto principale dal footer
+                const unsubscribeMarker = body.toLowerCase().indexOf('unsubscribe');
+                let mainContent = body;
+                let footerContent = '';
+                if (unsubscribeMarker !== -1) {
+                    mainContent = body.substring(0, unsubscribeMarker).trim();
+                    footerContent = body.substring(unsubscribeMarker).trim();
+                }
+
+                // Sanitizzazione HTML
+                const sanitizedMainContent = sanitizeHtml(mainContent, {
+                    allowedTags: ['p', 'br', 'strong', 'em', 'a', 'ul', 'li', 'div'],
+                    allowedAttributes: {
+                        'a': ['href', 'target', 'rel']
+                    },
+                    transformTags: {
+                        'a': (tagName, attribs) => {
+                            return {
+                                tagName: 'a',
+                                attribs: {
+                                    href: attribs.href || '#',
+                                    target: '_blank',
+                                    rel: 'noopener noreferrer'
+                                }
+                            };
+                        }
+                    },
+                    nonTextTags: ['style', 'script', 'textarea', 'noscript', 'pre', 'table']
+                });
+
+                const sanitizedFooterContent = sanitizeHtml(footerContent, {
+                    allowedTags: ['p', 'a'],
+                    allowedAttributes: {
+                        'a': ['href', 'target', 'rel']
+                    },
+                    transformTags: {
+                        'a': (tagName, attribs) => {
+                            return {
+                                tagName: 'a',
+                                attribs: {
+                                    href: attribs.href || '#',
+                                    target: '_blank',
+                                    rel: 'noopener noreferrer'
+                                }
+                            };
+                        }
+                    }
+                });
 
                 previewSender.textContent = sender;
                 previewSubject.textContent = subject;
                 previewTime.textContent = time;
-                previewBody.innerHTML = sanitizeHtml(body, {
-                    allowedTags: ['p', 'br', 'strong', 'em', 'a'],
-                    allowedAttributes: { 'a': ['href'] }
-                });
-
-                if (!emailPreviewModal) {
-                    throw new Error('emailPreviewModal non trovato');
-                }
+                previewBody.innerHTML = `
+                    <div class="email-content">${sanitizedMainContent || '<p>(Nessun contenuto)</p>'}</div>
+                    ${sanitizedFooterContent ? `<div class="email-footer">${sanitizedFooterContent}</div>` : ''}
+                `;
 
                 toggleModal(emailPreviewModal, true);
                 console.log('Anteprima email aperta:', { sender, subject });
