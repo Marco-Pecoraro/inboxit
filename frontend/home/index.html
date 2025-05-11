@@ -6,14 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>inboxit</title>
     <link rel="icon" href="/frontend/img/inboxit-logo.png">
-    <!-- Aggiunto ?v=1 per evitare cache -->
     <link rel="stylesheet" href="/home/styles.css?v=1">
-    <!-- Carica sanitize-html con fallback -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sanitize-html/2.13.0/sanitize-html.min.js"
         integrity="sha512-Zk5CTpJ1vfVj3Xv4qF4Q4+dC0EW6sk4p0HFv/BlVUbTbU3Yv3+hgq+/0kG1vO4jTa9/Niw+THX/4h0oPHN7SaoA=="
         crossorigin="anonymous"></script>
     <script>
-        // Fallback per sanitizeHtml
         window.sanitizeHtml = window.sanitizeHtml || function (html) {
             console.warn('sanitizeHtml non disponibile, usando fallback');
             return html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
@@ -56,6 +53,9 @@
                 <div>Mittente</div>
                 <div>Oggetto</div>
                 <div>Data</div>
+            </div>
+            <div class="email-list-container">
+                <!-- Gli email-item verranno aggiunti qui dinamicamente -->
             </div>
         </section>
         <section class="calendar-section" id="calendarSection">

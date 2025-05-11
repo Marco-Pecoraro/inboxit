@@ -2,6 +2,8 @@
 // Variabili
 const navItems = document.querySelectorAll('.email-nav li');
 const emailList = document.querySelector('#emailList');
+const emailListContainer = document.querySelector('.email-list-container'); // Aggiunto per gestire lo scorrimento
+const emailHeader = document.querySelector('.email-header'); // Aggiunto per il blur
 const calendarSection = document.querySelector('#calendarSection');
 const composeModal = document.querySelector('#composeModal');
 const settingsModal = document.querySelector('#settingsModal');
@@ -105,6 +107,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             darkThemeCheckbox.checked = true;
             document.body.classList.add('dark');
         }
+
+        // Aggiungi listener per effetto blur durante lo scorrimento
+        if (emailListContainer && emailHeader) {
+            emailListContainer.addEventListener('scroll', () => {
+                const emailItems = document.querySelectorAll('.email-item');
+                const headerBottom = emailHeader.getBoundingClientRect().bottom;
+
+                emailItems.forEach(item => {
+                    const itemTop = item.getBoundingClientRect().top;
+                    if (itemTop < headerBottom + 20) {
+                        item.classList.add('blur');
+                    } else {
+                        item.classList.remove('blur');
+                    }
+                });
+            });
+        }
     } catch (err) {
         console.error('Errore inizializzazione:', err);
         window.location.href = '/';
@@ -137,13 +156,17 @@ async function loadEmailsToPage() {
 }
 
 function renderEmailList(emails) {
+    // Svuota il contenitore delle email, ma lascia l'header
     emailList.innerHTML = `
         <div class="email-header">
             <div>Mittente</div>
             <div>Oggetto</div>
             <div>Data</div>
         </div>
+        <div class="email-list-container"></div>
     `;
+
+    const emailListContainer = emailList.querySelector('.email-list-container');
 
     console.log('Rendering emails:', emails);
 
@@ -164,7 +187,7 @@ function renderEmailList(emails) {
             <div class="email-preview">${email.body.substring(0, 100)}${email.body.length > 100 ? '...' : ''}</div>
         `;
 
-        emailList.appendChild(emailItem);
+        emailListContainer.appendChild(emailItem);
     });
 
     attachEmailListeners();
@@ -179,6 +202,10 @@ function filterEmails(category, searchTerm = '') {
     navItems.forEach(item => {
         item.classList.toggle('active', item.getAttribute('data-category') === category);
     });
+
+    // Mostra/nascondi sezione calendario
+    emailList.style.display = category === 'calendar' ? 'none' : 'block';
+    calendarSection.style.display = category === 'calendar' ? 'block' : 'none';
 
     // Filtra email solo se non siamo nella sezione calendario
     if (category !== 'calendar') {
