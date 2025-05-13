@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>inboxit - Contatti</title>
+    <link rel="icon" href="../img/inboxit-logo.svg" type="image/x-icon">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap">
+    <link rel="stylesheet" href="../base.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <header class="navbar">
+        <a href="../index.html" class="logo">inboxit</a>
+        <div class="menu-toggle"></div>
+        <nav>
+            <a href="../index.html#features">Servizi</a>
+            <a href="../index.html#stories">Recensioni</a>
+            <a href="../pricing/pricing.html">Pricing</a>
+            <a href="/login.html" class="login-button">Accedi</a>
+            <a href="contact.html" class="cta">Contattaci</a>
+        </nav>
+    </header>
+    <section class="contact-hero">
+        <div class="hero-container">
+            <span class="hero-icon">📬</span>
+            <h1 class="animate-glide">Contattaci, siamo qui per Te</h1>
+            <p class="animate-fade">Ti rispondiamo in meno di 24h. Scrivici per demo, domande o feedback.</p>
+        </div>
+    </section>
+    <section class="contact-form-section">
+        <div class="form-tabs">
+            <button class="tab active" data-tab="feedback">Feedback o Problemi</button>
+            <button class="tab" data-tab="activation">Attiva Servizio</button>
+        </div>
+        <form class="contact-form feedback-form animate-fade active">
+            <input type="text" placeholder="Il tuo nome" required>
+            <input type="email" placeholder="La tua email" required>
+            <textarea placeholder="Il tuo messaggio" required></textarea>
+            <button type="submit" class="button">Invia</button>
+        </form>
+        <form class="contact-form activation-form animate-fade">
+            <input type="text" placeholder="Il tuo nome" required>
+            <input type="email" placeholder="La tua email" required>
+            <select name="user-type" required>
+                <option value="" disabled selected>Sei un...</option>
+                <option value="freelancer">Libero Professionista</option>
+                <option value="company">Azienda</option>
+                <option value="private">Privato</option>
+            </select>
+            <select name="plan" required>
+                <option value="" disabled selected>Scegli un piano</option>
+                <option value="free">Prova Gratuita</option>
+                <option value="standard">Standard (8,99 €/mese)</option>
+                <option value="premium">Premium (89,99 €/anno)</option>
+            </select>
+            <button type="submit" class="button">Attiva Ora</button>
+        </form>
+    </section>
+    <section class="contact-reasons">
+        <h2 class="animate-glide">Perché Contattarci</h2>
+        <div class="reasons-grid">
+            <div class="reason-card animate-stagger">
+                <span class="reason-icon">⚡</span>
+                <h3>Supporto Veloce</h3>
+                <p>Risolviamo i tuoi dubbi in tempi record.</p>
+            </div>
+            <div class="reason-card animate-stagger">
+                <span class="reason-icon">💬</span>
+                <h3>Domande sui Piani</h3>
+                <p>Troviamo il piano perfetto per te.</p>
+            </div>
+            <div class="reason-card animate-stagger">
+                <span class="reason-icon">🌟</span>
+                <h3>Feedback</h3>
+                <p>Il tuo parere ci aiuta a migliorare.</p>
+            </div>
+        </div>
+    </section>
+    <section class="contact-alt">
+        <h2 class="animate-glide">Contattaci via Email</h2>
+        <div class="alt-grid">
+            <div class="alt-card animate-stagger">
+                <span class="alt-icon">📧</span>
+                <p><strong>Email</strong><br><a href="mailto:staff.inboxit@gmail.com">staff.inboxit@gmail.com</a></p>
+            </div>
+        </div>
+    </section>
+    <footer>
+        <span class="footer-logo">inboxit</span>
+        <p>© 2025 <u>inboxit</u> - Creato in Italia.</p>
+        <div class="footer-links">
+            <a href="#" data-modal="privacy">Privacy</a>
+            <a href="#" data-modal="terms">Termini</a>
+            <a href="contact.html">Contatti</a>
+        </div>
+    </footer>
+    <div id="privacy-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" data-modal="privacy">×</span>
+            <h3>Privacy</h3>
+            <p>I tuoi dati sono protetti con crittografia AES-256 e conformità GDPR.</p>
+            <p class="source">Leggi la nostra <a href="/privacy.html" target="_blank">Informativa sulla Privacy</a>.</p>
+        </div>
+    </div>
+    <div id="terms-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" data-modal="terms">×</span>
+            <h3>Termini</h3>
+            <p>Usa Inboxit nel rispetto delle nostre condizioni.</p>
+            <p class="source">Leggi i nostri <a href="/terms.html" target="_blank">Termini di Servizio</a>.</p>
+        </div>
+    </div>
+    <script defer src="../script.js"></script>
+</body>
+
+</html>

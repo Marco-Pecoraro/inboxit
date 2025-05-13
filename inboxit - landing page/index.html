@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>inboxit - Home</title>
+    <link rel="icon" href="./img/inboxit-logo.svg" type="image/x-icon">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap">
+    <link rel="stylesheet" href="base.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="sticky-cta">
+        <a href="contact/contact.html" class="button adaptive-button">Prova Gratis Ora</a>
+    </div>
+    <header class="navbar">
+        <a href="index.html" class="logo">inboxit</a>
+        <div class="menu-toggle"></div>
+        <nav>
+            <a href="#features">Servizi</a>
+            <a href="#stories">Recensioni</a>
+            <a href="pricing/pricing.html">Pricing</a>
+            <a href="/login.html" class="login-button">Accedi</a>
+            <a href="contact/contact.html" class="cta">Contattaci</a>
+        </nav>
+    </header>
+    <section class="hero">
+        <div class="hero-content">
+            <h1 class="animate-glide">Gmail, ma con <br>i Superpoteri</h1>
+            <p><b><u>inboxit</u></b> trasforma Gmail in un assistente AI.<br>Niente più tempo perso.</p>
+            <a href="contact/contact.html" class="button hero-cta">Prova Gratis per 15 Giorni</a>
+            <p class="trust-text">Si integra alla perfezione con <img src="img/gmail-icon.jpg" alt="Logo Gmail"
+                    class="gmail-logo" loading="lazy"></p>
+        </div>
+        <div class="hero-visual">
+            <img src="img/landing-page.png" alt="Inboxit Dashboard" class="hero-image" loading="lazy">
+        </div>
+    </section>
+    <section class="trust-badges">
+        <div class="badges">
+            <div class="badge animate-fade" data-modal="security">🔒 Sicurezza Garantita</div>
+            <div class="badge animate-fade" data-modal="gmail">📧 Collegato a Google</div>
+            <div class="badge animate-fade" data-modal="gdpr">🌍 Segue GDPR al 100%</div>
+        </div>
+    </section>
+    <div id="security-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" data-modal="security">×</span>
+            <h3>Sicurezza Garantita</h3>
+            <p>Crittografia end-to-end AES-256, opzioni di hosting on-premise, e controlli di accesso basati su ruoli.
+            </p>
+            <p class="source">Certificato ISO 27001. <a
+                    href="https://www.tdgroupitalia.it/wp-content/uploads/2022/06/Certificato-ISO-27001-TD-2022.pdf"
+                    target="_blank">Scopri di più</a>.</p>
+        </div>
+    </div>
+    <div id="gmail-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" data-modal="gmail">×</span>
+            <h3>Perfetto per Gmail</h3>
+            <p>Integrazione nativa con Google Workspace, sincronizzazione in tempo reale.</p>
+            <p class="source">Google Workspace API. <a href="https://developers.google.com/workspace"
+                    target="_blank">Scopri di più</a>.</p>
+        </div>
+    </div>
+    <div id="gdpr-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" data-modal="gdpr">×</span>
+            <h3>GDPR al 100%</h3>
+            <p>Conformità completa al GDPR, dati ospitati in data center EU.</p>
+            <p class="source">Regolamenti EU 2016/679. <a
+                    href="https://eur-lex.europa.eu/legal-content/IT/TXT/PDF/?uri=CELEX:32016R0679"
+                    target="_blank">Scopri di più</a>.</p>
+        </div>
+    </div>
+    <section id="features" class="features">
+        <h2 class="animate-glide"><u>inboxit</u>: meno Stress, più Risultati</h2>
+        <div class="grid">
+            <div class="feature-card animate-stagger">
+                <span class="feature-icon">⚡</span>
+                <h3>Zero Caos</h3>
+                <p>L’AI smista e organizza le tue email in un attimo.</p>
+            </div>
+            <div class="feature-card animate-stagger">
+                <span class="feature-icon">📊</span>
+                <h3>Controllo Facile</h3>
+                <p>Dashboard chiara per tenere tutto sott’occhio.</p>
+            </div>
+            <div class="feature-card animate-stagger">
+                <span class="feature-icon">💬</span>
+                <h3>Risposte Perfette</h3>
+                <p>Email scritte come se fossi tu, ma più velocemente.</p>
+            </div>
+            <div class="feature-card animate-stagger">
+                <span class="feature-icon">🔐</span>
+                <h3>Dati al Sicuro</h3>
+                <p>Crittografia totale e opzioni on-premise.</p>
+            </div>
+        </div>
+        <p class="features-text">Inboxit usa l’intelligenza artificiale per organizzare le tue email, rispondere in modo
+            naturale e darti una dashboard chiara. Perfetto per professionisti, aziende e chiunque voglia risparmiare
+            tempo.</p>
+    </section>
+    <section id="stories" class="stories">
+        <h2>Chi sta già usando <u>inboxit</u></h2>
+        <div class="story-carousel"></div>
+        <div class="carousel-controls">
+            <span class="carousel-prev" onclick="moveCarousel(-1)">❮</span>
+            <span class="carousel-next" onclick="moveCarousel(1)">❯</span>
+        </div>
+    </section>
+    <section class="cta-final">
+        <h2>Email sotto controllo, tutto già organizzato</h2>
+        <a href="pricing/pricing.html" class="button">Vedi i piani</a>
+    </section>
+    <section id="contact" class="contact">
+        <h2>Provalo Ora,<br>Ci Vuole un Minuto</h2>
+        <form class="contact-form">
+            <input type="text" placeholder="Il tuo nome" required>
+            <input type="email" placeholder="La tua email" required>
+            <button type="submit" class="button">Unisciti al club</button>
+        </form>
+    </section>
+    <footer>
+        <span class="footer-logo">inboxit</span>
+        <p>© 2025 <u>inboxit</u> - Creato in Italia.</p>
+        <div class="footer-links">
+            <a href="#" data-modal="privacy">Privacy</a>
+            <a href="#" data-modal="terms">Termini</a>
+            <a href="contact/contact.html">Contatti</a>
+        </div>
+    </footer>
+    <div id="privacy-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" data-modal="privacy">×</span>
+            <h3>Privacy</h3>
+            <p>I tuoi dati sono protetti con crittografia AES-256 e conformità GDPR.</p>
+            <p class="source">Leggi la nostra <a href="/privacy.html" target="_blank">Informativa sulla Privacy</a>.</p>
+        </div>
+    </div>
+    <div id="terms-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" data-modal="terms">×</span>
+            <h3>Termini</h3>
+            <p>Usa Inboxit nel rispetto delle nostre condizioni.</p>
+            <p class="source">Leggi i nostri <a href="/terms.html" target="_blank">Termini di Servizio</a>.</p>
+        </div>
+    </div>
+    <script defer src="script.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>inboxit - Pricing</title>
+    <link rel="icon" href="../img/inboxit-logo.svg" type="image/x-icon">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap">
+    <link rel="stylesheet" href="../base.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <header class="navbar">
+        <a href="../index.html" class="logo">inboxit</a>
+        <div class="menu-toggle"></div>
+        <nav>
+            <a href="../index.html#features">Servizi</a>
+            <a href="../index.html#stories">Recensioni</a>
+            <a href="pricing.html">Pricing</a>
+            <a href="/login.html" class="login-button">Accedi</a>
+            <a href="../contact/contact.html" class="cta">Contattaci</a>
+        </nav>
+    </header>
+    <section class="pricing">
+        <h1 class="animate-glide">Scegli il Piano Perfetto per Te</h1>
+        <div class="pricing-grid">
+            <div class="pricing-card animate-stagger">
+                <h2>Prova Gratuita</h2>
+                <p class="price highlight">Gratis</p>
+                <p class="price-sub">per 15 giorni</p>
+                <ul>
+                    <li>Accesso completo a tutte le funzionalità</li>
+                    <li>Integrazione con Gmail</li>
+                    <li>Nessuna carta richiesta</li>
+                </ul>
+                <a href="../contact/contact.html?plan=free" class="button">Prova Ora</a>
+            </div>
+            <div class="pricing-card animate-stagger">
+                <h2>Standard</h2>
+                <p class="price highlight">8,99 €</p>
+                <p class="price-sub">al mese</p>
+                <ul>
+                    <li>Integrazione con Gmail</li>
+                    <li>Risposte AI personalizzate</li>
+                    <li>Dashboard in tempo reale</li>
+                    <li>Supporto base</li>
+                </ul>
+                <a href="../contact/contact.html?plan=standard" class="button">Inizia Ora</a>
+            </div>
+            <div class="pricing-card popular animate-stagger">
+                <span class="popular-badge">Più Popolare</span>
+                <h2>Premium</h2>
+                <p class="price highlight">89,99 €</p>
+                <p class="price-sub">/anno <span class="discount">(da 107,88 €)</span></p>
+                <ul>
+                    <li>Tutto del piano Standard</li>
+                    <li>Supporto prioritario</li>
+                    <li>Opzioni on-premise</li>
+                    <li>Report avanzati</li>
+                </ul>
+                <a href="../contact/contact.html?plan=premium" class="button">Scegli Premium</a>
+            </div>
+        </div>
+    </section>
+    <footer>
+        <span class="footer-logo">inboxit</span>
+        <p>© 2025 <u>inboxit</u> - Creato in Italia.</p>
+        <div class="footer-links">
+            <a href="#" data-modal="privacy">Privacy</a>
+            <a href="#" data-modal="terms">Termini</a>
+            <a href="../contact/contact.html">Contatti</a>
+        </div>
+    </footer>
+    <div id="privacy-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" data-modal="privacy">×</span>
+            <h3>Privacy</h3>
+            <p>I tuoi dati sono protetti con crittografia AES-256 e conformità GDPR.</p>
+            <p class="source">Leggi la nostra <a href="/privacy.html" target="_blank">Informativa sulla Privacy</a>.</p>
+        </div>
+    </div>
+    <div id="terms-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" data-modal="terms">×</span>
+            <h3>Termini</h3>
+            <p>Usa Inboxit nel rispetto delle nostre condizioni.</p>
+            <p class="source">Leggi i nostri <a href="/terms.html" target="_blank">Termini di Servizio</a>.</p>
+        </div>
+    </div>
+    <script defer src="../script.js"></script>
+</body>
+
+</html>
