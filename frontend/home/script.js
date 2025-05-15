@@ -1,9 +1,7 @@
 // frontend/home/script.js
-// Variabili
 const navItems = document.querySelectorAll('.email-nav li');
-const emailList = document.querySelector('#emailList');
-const emailListContainer = document.querySelector('.email-list-container'); // Aggiunto per gestire lo scorrimento
-const emailHeader = document.querySelector('.email-header'); // Aggiunto per il blur
+const emailListContainer = document.querySelector('.email-list-container');
+const emailHeader = document.querySelector('.email-header');
 const calendarSection = document.querySelector('#calendarSection');
 const composeModal = document.querySelector('#composeModal');
 const settingsModal = document.querySelector('#settingsModal');
@@ -11,7 +9,8 @@ const eventModal = document.querySelector('#eventModal');
 const emailPreviewModal = document.querySelector('#emailPreviewModal');
 const composeBtn = document.querySelector('.compose-btn');
 const settingsBtn = document.querySelector('.settings-btn');
-const syncBtn = document.querySelector('#sync-button');
+const syncBtn = document.querySelector('.sync-btn');
+const sendBtn = document.querySelector('.send-btn');
 const overlay = document.querySelector('#overlay');
 const closeButtons = document.querySelectorAll('.close-btn');
 const saveBtn = document.querySelector('.save-btn');
@@ -44,6 +43,7 @@ const composeText = document.querySelector('.compose-text');
 const accountNameInput = document.querySelector('#accountName');
 const accountEmailInput = document.querySelector('#accountEmail');
 const emailLimitSelect = document.querySelector('#emailLimit');
+const loadingOverlay = document.querySelector('#loadingOverlay');
 
 let currentDate = new Date();
 let currentMonth = currentDate.getMonth();
@@ -51,46 +51,105 @@ let currentYear = currentDate.getFullYear();
 let currentCategory = 'inbox';
 let events = [];
 let currentEmail = null;
-let emailLimit = 50; // Valore predefinito aggiornato
+let emailLimit = 50;
 
 // Inizializzazione
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        // Verifica token nell'URL
+        console.log('Inizio inizializzazione pagina home');
+        toggleLoading(true);
+
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
+        const error = urlParams.get('error');
 
-        if (token) {
-            sessionStorage.setItem('gt', token);
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
+        console.log('Parametri URL:', { token, error });
 
-        // Verifica autenticazione
-        const storedToken = sessionStorage.getItem('gt');
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-
-        if (!storedToken || !user.email) {
+        if (error) {
+            let errorMessage = 'Errore durante il login. Riprova.';
+            if (error === 'auth_required') {
+                errorMessage = 'Autenticazione richiesta. Effettua il login.';
+            } else if (error === 'auth_failed') {
+                errorMessage = 'Autenticazione fallita. Verifica le credenziali e riprova.';
+            } else if (error === 'init_failed') {
+                errorMessage = 'Errore di inizializzazione. Riprova più tardi.';
+            }
+            console.error('Errore rilevato:', errorMessage);
+            alert(errorMessage);
             window.location.href = '/';
             return;
         }
 
-        // Imposta dati utente
+        if (token) {
+            console.log('Token ricevuto dall\'URL, salvataggio in sessionStorage:', token.substring(0, 20) + '...');
+            sessionStorage.setItem('gt', token);
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        const storedToken = sessionStorage.getItem('gt');
+        let user = {};
+        try {
+            user = JSON.parse(localStorage.getItem('user') || '{}');
+            console.log('Dati utente da localStorage:', user);
+        } catch (err) {
+            console.error('Errore parsing user da localStorage:', err);
+            user = {};
+        }
+
+        console.log('Dati autenticazione:', { storedToken: storedToken ? storedToken.substring(0, 20) + '...' : null, user });
+
+        if (!storedToken) {
+            console.error('Token mancante in sessionStorage');
+            alert('Sessione scaduta. Effettua nuovamente il login.');
+            window.location.href = '/?error=auth_required';
+            return;
+        }
+
+        if (!user.email) {
+            console.warn('Email utente mancante, tentativo di recupero da /api/user');
+            try {
+                const response = await fetch('/api/user', {
+                    headers: {
+                        'Authorization': `Bearer ${storedToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Impossibile recuperare i dati utente');
+                }
+                user = await response.json();
+                console.log('Dati utente recuperati da /api/user:', user);
+                localStorage.setItem('user', JSON.stringify(user));
+            } catch (err) {
+                console.error('Errore recupero dati utente:', err);
+                alert('Errore recupero dati utente: ' + err.message);
+                window.location.href = '/?error=auth_failed';
+                return;
+            }
+        }
+
         accountNameInput.value = user.name || '';
         accountEmailInput.value = user.email;
 
-        // Carica dati iniziali
+        console.log('Inizio caricamento email');
         await loadEmailsToPage();
-        // Sincronizzazione automatica al caricamento se non ci sono email
-        if (document.querySelectorAll('.email-item').length === 0) {
-            console.log('Nessuna email trovata, avvio sincronizzazione automatica');
+        console.log('Email caricate, verifica presenza elementi');
+
+        // Categorizza email non categorizzate
+        await categorizeEmails();
+
+        if (!document.querySelectorAll('.email-item').length) {
+            console.log('Nessuna email presente, avvio sincronizzazione automatica');
             syncBtn.disabled = true;
             syncBtn.textContent = 'Sincronizzazione...';
             try {
                 await syncEmails();
                 await loadEmailsToPage();
+                await categorizeEmails();
             } catch (err) {
                 console.error('Errore sincronizzazione automatica:', err);
-                alert('Errore sincronizzazione automatica: ' + err.message);
+                alert('Errore sincronizzazione email: ' + err.message);
             } finally {
                 syncBtn.disabled = false;
                 syncBtn.textContent = 'Sincronizza';
@@ -100,15 +159,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateEmailCounts();
         toggleEmailCountVisibility(showEmailCountCheckbox.checked);
         filterEmails('inbox');
+        await loadEvents();
         generateCalendar(currentMonth, currentYear);
 
-        // Applica tema scuro se salvato
         if (localStorage.getItem('darkTheme') === 'true') {
             darkThemeCheckbox.checked = true;
             document.body.classList.add('dark');
         }
 
-        // Aggiungi listener per effetto blur durante lo scorrimento
         if (emailListContainer && emailHeader) {
             emailListContainer.addEventListener('scroll', () => {
                 const emailItems = document.querySelectorAll('.email-item');
@@ -116,23 +174,43 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 emailItems.forEach(item => {
                     const itemTop = item.getBoundingClientRect().top;
-                    if (itemTop < headerBottom + 20) {
-                        item.classList.add('blur');
-                    } else {
-                        item.classList.remove('blur');
-                    }
+                    item.classList.toggle('blur', itemTop < headerBottom + 20);
                 });
             });
         }
+
+        setInterval(async () => {
+            try {
+                console.log('Sincronizzazione automatica...');
+                await syncEmails();
+                await loadEmailsToPage();
+                await categorizeEmails();
+                updateEmailCounts();
+                filterEmails(currentCategory, searchInput.value.toLowerCase());
+            } catch (err) {
+                console.error('Errore sincronizzazione automatica:', err);
+                alert('Errore sincronizzazione automatica: ' + err.message);
+            }
+        }, 5 * 60 * 1000);
+
+        console.log('Inizializzazione completata con successo');
     } catch (err) {
         console.error('Errore inizializzazione:', err);
-        window.location.href = '/';
+        alert('Errore inizializzazione: ' + err.message);
+    } finally {
+        toggleLoading(false);
     }
 });
 
-// Funzioni principali
+function toggleLoading(show) {
+    if (loadingOverlay) {
+        loadingOverlay.style.display = show ? 'flex' : 'none';
+    }
+}
+
 async function loadEmailsToPage() {
     try {
+        console.log('Inizio caricamento email da /api/emails');
         const query = emailLimit === null ? '' : `?limit=${emailLimit}`;
         const response = await fetch(`/api/emails${query}`, {
             headers: {
@@ -141,73 +219,123 @@ async function loadEmailsToPage() {
             }
         });
 
+        console.log('Risposta /api/emails:', { status: response.status, ok: response.ok });
+
         if (!response.ok) {
             const errorData = await response.json();
+            console.error('Errore risposta /api/emails:', errorData);
             throw new Error(errorData.message || 'Errore caricamento email');
         }
 
         const emails = await response.json();
-        console.log('Emails caricate:', emails);
-        renderEmailList(emails);
+        console.log('Email ricevute:', emails.length);
+        renderEmails(emails);
+        attachEmailListeners();
     } catch (err) {
         console.error('Errore caricamento email:', err);
-        throw err; // Propaga l'errore per gestirlo nel chiamante
+        throw err;
     }
 }
 
-function renderEmailList(emails) {
-    // Svuota il contenitore delle email, ma lascia l'header
-    emailList.innerHTML = `
-        <div class="email-header">
-            <div>Mittente</div>
-            <div>Oggetto</div>
-            <div>Data</div>
-        </div>
-        <div class="email-list-container"></div>
-    `;
+async function categorizeEmails() {
+    try {
+        console.log('Inizio categorizzazione email');
+        const emailItems = document.querySelectorAll('.email-item');
+        const emailsToCategorize = Array.from(emailItems)
+            .filter(item => !item.getAttribute('data-category') || item.getAttribute('data-category').split(' ').length === 0)
+            .map(item => ({
+                id: item.getAttribute('data-id'),
+                subject: item.getAttribute('data-subject'),
+                body: item.getAttribute('data-body')
+            }));
 
-    const emailListContainer = emailList.querySelector('.email-list-container');
+        if (emailsToCategorize.length === 0) {
+            console.log('Nessuna email da categorizzare');
+            return;
+        }
 
-    console.log('Rendering emails:', emails);
+        console.log('Email da categorizzare:', emailsToCategorize.length);
+        const response = await fetch('/api/ai/categorize', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${sessionStorage.getItem('gt')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ emails: emailsToCategorize })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Errore risposta /api/ai/categorize:', errorData);
+            throw new Error(errorData.message || 'Errore categorizzazione email');
+        }
+
+        const categorizedEmails = await response.json();
+        console.log('Email categorizzate:', categorizedEmails.length);
+
+        categorizedEmails.forEach(({ id, categories }) => {
+            const emailItem = document.querySelector(`.email-item[data-id="${id}"]`);
+            if (emailItem) {
+                emailItem.setAttribute('data-category', categories.join(' '));
+                const category = categories[0] || 'inbox';
+                const label = emailItem.querySelector('.email-label');
+                if (label) {
+                    label.textContent = category;
+                    label.className = `email-label label-${category}`;
+                }
+            }
+        });
+
+        updateEmailCounts();
+        filterEmails(currentCategory, searchInput.value.toLowerCase());
+    } catch (err) {
+        console.error('Errore categorizzazione email:', err);
+        alert('Errore categorizzazione email: ' + err.message);
+    }
+}
+
+function renderEmails(emails) {
+    if (!emailListContainer) {
+        console.error('emailListContainer non trovato');
+        return;
+    }
+    emailListContainer.innerHTML = '';
 
     emails.forEach(email => {
-        const emailItem = document.createElement('div');
-        emailItem.className = 'email-item';
-        emailItem.setAttribute('data-id', email.id);
-        emailItem.setAttribute('data-sender', email.from || 'Sconosciuto');
-        emailItem.setAttribute('data-subject', email.subject || '(senza oggetto)');
-        emailItem.setAttribute('data-body', email.body || '(Nessun contenuto)');
-        emailItem.setAttribute('data-time', new Date(email.date).toLocaleString('it-IT'));
-        emailItem.setAttribute('data-category', email.categories.join(' '));
+        const emailElement = document.createElement('div');
+        emailElement.className = 'email-item';
+        emailElement.setAttribute('data-id', email.id || '');
+        emailElement.setAttribute('data-category', email.categories?.join(' ') || 'inbox');
+        emailElement.setAttribute('data-sender', email.from || 'Sconosciuto');
+        emailElement.setAttribute('data-subject', email.subject || '(senza oggetto)');
+        emailElement.setAttribute('data-body', email.body || '');
+        emailElement.setAttribute('data-time', email.date ? new Date(email.date).toLocaleString() : 'N/D');
 
-        emailItem.innerHTML = `
-            <div class="email-sender">${email.from || 'Sconosciuto'}</div>
-            <div class="email-subject">${email.subject || '(senza oggetto)'}</div>
-            <div class="email-time">${new Date(email.date).toLocaleString('it-IT')}</div>
-            <div class="email-preview">${email.body.substring(0, 100)}${email.body.length > 100 ? '...' : ''}</div>
+        const category = email.categories?.[0] || 'inbox';
+        const safeFrom = window.sanitizeHtml(email.from || 'Sconosciuto', { allowedTags: [] });
+        const safeSubject = window.sanitizeHtml(email.subject || '(senza oggetto)', { allowedTags: [] });
+        const safeBody = window.sanitizeHtml(email.body?.substring(0, 100) || '', { allowedTags: [] });
+
+        emailElement.innerHTML = `
+            <div class="email-sender"><span class="email-label label-${category}">${category}</span>${safeFrom}</div>
+            <div class="email-subject">${safeSubject}</div>
+            <div class="email-time">${email.date ? new Date(email.date).toLocaleString() : 'N/D'}</div>
+            <div class="email-preview">${safeBody}...</div>
         `;
 
-        emailListContainer.appendChild(emailItem);
+        emailListContainer.appendChild(emailElement);
     });
-
-    attachEmailListeners();
 }
 
 function filterEmails(category, searchTerm = '') {
     currentCategory = category;
-
-    console.log('Filtrando per categoria:', category);
-
-    // Aggiorna stato attivo della navigazione
     navItems.forEach(item => {
         item.classList.toggle('active', item.getAttribute('data-category') === category);
     });
 
-    // Mostra/nascondi sezione calendario
-    emailList.style.display = category === 'calendar' ? 'none' : 'block';
+    emailListContainer.style.display = category === 'calendar' ? 'none' : 'block';
     calendarSection.style.display = category === 'calendar' ? 'block' : 'none';
 
-    // Filtra email solo se non siamo nella sezione calendario
     if (category !== 'calendar') {
         document.querySelectorAll('.email-item').forEach(item => {
             const categories = item.getAttribute('data-category').split(' ');
@@ -220,8 +348,6 @@ function filterEmails(category, searchTerm = '') {
                 item.getAttribute('data-subject').toLowerCase().includes(searchTerm) ||
                 item.getAttribute('data-body').toLowerCase().includes(searchTerm);
 
-            console.log('Email corrisponde al filtro?', matchesCategory && matchesSearch);
-
             item.style.display = matchesCategory && matchesSearch ? 'grid' : 'none';
         });
     }
@@ -229,21 +355,27 @@ function filterEmails(category, searchTerm = '') {
     updateEmailCounts();
 }
 
-function updateEmailCounts() {
-    navItems.forEach(item => {
-        const category = item.getAttribute('data-category');
-        let count = 0;
+async function loadEvents() {
+    try {
+        console.log('Caricamento eventi da /api/events');
+        const response = await fetch('/api/events', {
+            headers: {
+                'Authorization': `Bearer ${sessionStorage.getItem('gt')}`,
+                'Content-Type': 'application/json'
+            }
+        });
 
-        if (category === 'inbox') {
-            count = document.querySelectorAll('.email-item:not([data-category*="sent"]):not([data-category*="trash"])').length;
-        } else if (category === 'calendar') {
-            count = events.length;
-        } else {
-            count = document.querySelectorAll(`.email-item[data-category*="${category}"]`).length;
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Errore caricamento eventi');
         }
 
-        item.querySelector('.email-count').textContent = count;
-    });
+        events = await response.json();
+        console.log('Eventi caricati:', events.length);
+    } catch (err) {
+        console.error('Errore caricamento eventi:', err);
+        alert('Errore caricamento eventi: ' + err.message);
+    }
 }
 
 function generateCalendar(month, year) {
@@ -289,18 +421,49 @@ function generateCalendar(month, year) {
     events.forEach(event => {
         const eventItem = document.createElement('div');
         eventItem.className = 'event-item';
-        eventItem.textContent = `${event.title} - ${new Date(event.date).toLocaleDateString('it-IT')} ${event.time}`;
+        eventItem.setAttribute('data-id', event._id);
+        eventItem.innerHTML = `
+            <span>${event.title} - ${new Date(event.date).toLocaleDateString('it-IT')} ${event.time}</span>
+            <button class="delete-event-btn"><i class="fas fa-trash"></i> Elimina</button>
+        `;
         eventsList.appendChild(eventItem);
+
+        eventItem.querySelector('.delete-event-btn').addEventListener('click', async () => {
+            try {
+                const response = await fetch(`/api/events/${event._id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${sessionStorage.getItem('gt')}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Errore eliminazione evento');
+                }
+
+                events = events.filter(e => e._id !== event._id);
+                generateCalendar(currentMonth, currentYear);
+                alert('Evento eliminato!');
+            } catch (err) {
+                console.error('Errore eliminazione evento:', err);
+                alert('Errore eliminazione evento: ' + err.message);
+            }
+        });
     });
 }
 
 function toggleModal(modal, show) {
-    modal.classList.toggle('active', show);
-    overlay.classList.toggle('active', show);
+    if (modal) {
+        modal.classList.toggle('active', show);
+        overlay.classList.toggle('active', show);
+    }
 }
 
 async function syncEmails() {
     try {
+        console.log('Inizio sincronizzazione email da /api/emails/sync');
         const response = await fetch('/api/emails/sync', {
             method: 'POST',
             headers: {
@@ -309,14 +472,42 @@ async function syncEmails() {
             }
         });
 
+        console.log('Risposta /api/emails/sync:', { status: response.status, ok: response.ok });
+
         if (!response.ok) {
             const errorData = await response.json();
+            console.error('Errore risposta /api/emails/sync:', errorData);
             throw new Error(errorData.message || 'Errore sincronizzazione email');
+        }
+
+        const data = await response.json();
+        console.log('Email sincronizzate:', data.length);
+        return data;
+    } catch (err) {
+        console.error('Errore sincronizzazione:', err);
+        throw err;
+    }
+}
+
+async function sendEmail(to, subject, body) {
+    try {
+        const response = await fetch('/api/emails/send', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${sessionStorage.getItem('gt')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ to, subject, body })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Errore invio email');
         }
 
         return await response.json();
     } catch (err) {
-        console.error('Errore sincronizzazione:', err);
+        console.error('Errore invio email:', err);
         throw err;
     }
 }
@@ -346,35 +537,24 @@ async function trashEmail(emailId) {
 
 function attachEmailListeners() {
     const emailItems = document.querySelectorAll('.email-item');
-    if (!emailItems.length) {
-        console.warn('Nessun elemento .email-item trovato');
-        return;
-    }
-
     emailItems.forEach(item => {
         item.addEventListener('click', () => {
             try {
-                if (!window.sanitizeHtml) {
-                    throw new Error('sanitizeHtml non è disponibile');
-                }
-
                 currentEmail = item;
                 const sender = item.getAttribute('data-sender') || 'Sconosciuto';
                 const subject = item.getAttribute('data-subject') || '(senza oggetto)';
                 const time = item.getAttribute('data-time') || 'N/D';
                 let body = item.getAttribute('data-body') || '(Nessun contenuto)';
 
-                // Pulizia del testo
                 body = body
-                    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '') // Rimuove tag <style>
-                    .replace(/style="[^"]*"/gi, '') // Rimuove attributi style inline
-                    .replace(/\n{2,}/g, '\n\n') // Riduce multiple linee vuote
-                    .replace(/\( http:\/\/[^\)]+\)/g, '') // Rimuove link tra parentesi
-                    .replace(/http:\/\/[^\s]+/g, '') // Rimuove altri link non desiderati
-                    .replace(/\s{2,}/g, ' ') // Riduce spazi multipli
+                    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+                    .replace(/style="[^"]*"/gi, '')
+                    .replace(/\n{2,}/g, '\n\n')
+                    .replace(/\( http:\/\/[^\)]+\)/g, '')
+                    .replace(/http:\/\/[^\s]+/g, '')
+                    .replace(/\s{2,}/g, ' ')
                     .trim();
 
-                // Separazione del contenuto principale dal footer
                 const unsubscribeMarker = body.toLowerCase().indexOf('unsubscribe');
                 let mainContent = body;
                 let footerContent = '';
@@ -383,43 +563,33 @@ function attachEmailListeners() {
                     footerContent = body.substring(unsubscribeMarker).trim();
                 }
 
-                // Sanitizzazione HTML
-                const sanitizedMainContent = sanitizeHtml(mainContent, {
+                const sanitizedMainContent = window.sanitizeHtml(mainContent, {
                     allowedTags: ['p', 'br', 'strong', 'em', 'a', 'ul', 'li', 'div'],
-                    allowedAttributes: {
-                        'a': ['href', 'target', 'rel']
-                    },
+                    allowedAttributes: { 'a': ['href', 'target', 'rel'] },
                     transformTags: {
-                        'a': (tagName, attribs) => {
-                            return {
-                                tagName: 'a',
-                                attribs: {
-                                    href: attribs.href || '#',
-                                    target: '_blank',
-                                    rel: 'noopener noreferrer'
-                                }
-                            };
-                        }
-                    },
-                    nonTextTags: ['style', 'script', 'textarea', 'noscript', 'pre', 'table']
+                        'a': (tagName, attribs) => ({
+                            tagName: 'a',
+                            attribs: {
+                                href: attribs.href || '#',
+                                target: '_blank',
+                                rel: 'noopener noreferrer'
+                            }
+                        })
+                    }
                 });
 
-                const sanitizedFooterContent = sanitizeHtml(footerContent, {
+                const sanitizedFooterContent = window.sanitizeHtml(footerContent, {
                     allowedTags: ['p', 'a'],
-                    allowedAttributes: {
-                        'a': ['href', 'target', 'rel']
-                    },
+                    allowedAttributes: { 'a': ['href', 'target', 'rel'] },
                     transformTags: {
-                        'a': (tagName, attribs) => {
-                            return {
-                                tagName: 'a',
-                                attribs: {
-                                    href: attribs.href || '#',
-                                    target: '_blank',
-                                    rel: 'noopener noreferrer'
-                                }
-                            };
-                        }
+                        'a': (tagName, attribs) => ({
+                            tagName: 'a',
+                            attribs: {
+                                href: attribs.href || '#',
+                                target: '_blank',
+                                rel: 'noopener noreferrer'
+                            }
+                        })
                     }
                 });
 
@@ -432,7 +602,6 @@ function attachEmailListeners() {
                 `;
 
                 toggleModal(emailPreviewModal, true);
-                console.log('Anteprima email aperta:', { sender, subject });
             } catch (err) {
                 console.error('Errore apertura anteprima email:', err);
                 alert('Errore apertura anteprima email: ' + err.message);
@@ -447,11 +616,30 @@ function toggleEmailCountVisibility(show) {
     });
 }
 
+function updateEmailCounts() {
+    navItems.forEach(item => {
+        const category = item.getAttribute('data-category');
+        let count = 0;
+
+        if (category === 'inbox') {
+            count = document.querySelectorAll('.email-item:not([data-category*="sent"]):not([data-category*="trash"])').length;
+        } else if (category === 'calendar') {
+            count = events.length;
+        } else {
+            count = document.querySelectorAll(`.email-item[data-category*="${category}"]`).length;
+        }
+
+        const countElement = item.querySelector('.email-count');
+        if (countElement) countElement.textContent = count;
+    });
+}
+
 // Event listeners
 emailLimitSelect.addEventListener('change', async () => {
     try {
         emailLimit = emailLimitSelect.value === 'all' ? null : parseInt(emailLimitSelect.value);
         await loadEmailsToPage();
+        await categorizeEmails();
         filterEmails(currentCategory, searchInput.value.toLowerCase());
     } catch (err) {
         console.error('Errore cambiamento limite email:', err);
@@ -483,7 +671,6 @@ closeButtons.forEach(btn => {
 saveBtn.addEventListener('click', () => {
     localStorage.setItem('darkTheme', darkThemeCheckbox.checked);
     toggleModal(settingsModal, false);
-    alert('Impostazioni salvate!');
 });
 
 logoutBtn.addEventListener('click', () => {
@@ -493,6 +680,10 @@ logoutBtn.addEventListener('click', () => {
 });
 
 saveAccountBtn.addEventListener('click', () => {
+    if (!accountNameInput.value || !accountEmailInput.value) {
+        alert('Compila tutti i campi account!');
+        return;
+    }
     localStorage.setItem('user', JSON.stringify({
         name: accountNameInput.value,
         email: accountEmailInput.value
@@ -501,21 +692,42 @@ saveAccountBtn.addEventListener('click', () => {
     alert('Modifiche account salvate!');
 });
 
-addEventBtn.addEventListener('click', () => {
-    const title = eventTitleInput.value;
-    const date = new Date(eventDateInput.value);
+addEventBtn.addEventListener('click', async () => {
+    const title = eventTitleInput.value.trim();
+    const date = eventDateInput.value;
     const time = eventTimeInput.value;
 
-    if (title && date && time) {
-        events.push({ date, title, time });
+    if (!title || !date || !time) {
+        alert('Compila tutti i campi!');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/events', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${sessionStorage.getItem('gt')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ title, date, time })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Errore salvataggio evento');
+        }
+
+        const newEvent = await response.json();
+        events.push(newEvent);
         generateCalendar(currentMonth, currentYear);
         toggleModal(eventModal, false);
         alert('Evento aggiunto!');
         eventTitleInput.value = '';
         eventDateInput.value = '';
         eventTimeInput.value = '';
-    } else {
-        alert('Compila tutti i campi!');
+    } catch (err) {
+        console.error('Errore salvataggio evento:', err);
+        alert('Errore salvataggio evento: ' + err.message);
     }
 });
 
@@ -534,6 +746,7 @@ syncBtn.addEventListener('click', async () => {
     try {
         await syncEmails();
         await loadEmailsToPage();
+        await categorizeEmails();
         updateEmailCounts();
         filterEmails(currentCategory, searchInput.value.toLowerCase());
         alert('Email sincronizzate!');
@@ -543,6 +756,32 @@ syncBtn.addEventListener('click', async () => {
     } finally {
         syncBtn.disabled = false;
         syncBtn.textContent = 'Sincronizza';
+    }
+});
+
+sendBtn.addEventListener('click', async () => {
+    const to = composeInput.value.trim();
+    const subject = composeSubject.value.trim();
+    const body = composeText.value.trim();
+
+    if (!to || !subject || !body) {
+        alert('Compila tutti i campi!');
+        return;
+    }
+
+    try {
+        await sendEmail(to, subject, body);
+        toggleModal(composeModal, false);
+        alert('Email inviata!');
+        composeInput.value = '';
+        composeSubject.value = '';
+        composeText.value = '';
+        await syncEmails();
+        await loadEmailsToPage();
+        await categorizeEmails();
+    } catch (err) {
+        console.error('Errore invio email:', err);
+        alert('Errore invio email: ' + err.message);
     }
 });
 
@@ -577,13 +816,41 @@ replyBtn.addEventListener('click', () => {
     }
 });
 
-aiReplyBtn.addEventListener('click', () => {
-    if (currentEmail) {
+aiReplyBtn.addEventListener('click', async () => {
+    if (!currentEmail) return alert('Nessun email selezionata');
+    const body = currentEmail.getAttribute('data-body');
+    if (!body) return alert('Nessun contenuto disponibile');
+
+    aiReplyBtn.textContent = 'AI in corso...';
+    aiReplyBtn.disabled = true;
+
+    try {
+        const response = await fetch('/api/ai/reply', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${sessionStorage.getItem('gt')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ body })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+            console.error('Errore risposta /api/ai/reply:', data);
+            throw new Error(data.message || 'Errore generazione risposta AI');
+        }
+
+        toggleModal(composeModal, true);
+        composeText.value = data.reply;
         composeInput.value = currentEmail.getAttribute('data-sender');
         composeSubject.value = `Re: ${currentEmail.getAttribute('data-subject')}`;
-        composeText.value = `Ciao ${currentEmail.getAttribute('data-sender')},\n\nGrazie per il tuo messaggio. Ti risponderò al più presto.\n\nCordiali saluti,\n${accountNameInput.value || 'Il tuo nome'}`;
         toggleModal(emailPreviewModal, false);
-        toggleModal(composeModal, true);
+    } catch (err) {
+        console.error('Errore AI reply:', err.message);
+        alert('Errore generazione risposta AI: ' + err.message);
+    } finally {
+        aiReplyBtn.textContent = 'Rispondi con AI';
+        aiReplyBtn.disabled = false;
     }
 });
 

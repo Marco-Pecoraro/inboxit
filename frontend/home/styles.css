@@ -1142,3 +1142,47 @@ body.dark .reply-btn:hover {
         opacity: 1;
     }
 }
+
+.email-label {
+    font-size: 10px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 12px;
+    margin-right: 6px;
+    text-transform: uppercase;
+}
+
+.label-inbox {
+    background: #007bff;
+    color: white;
+}
+
+.label-sent {
+    background: #28a745;
+    color: white;
+}
+
+.label-trash {
+    background: #dc3545;
+    color: white;
+}
+
+.label-spam {
+    background: #ffc107;
+    color: black;
+}
+
+.label-important {
+    background: #6610f2;
+    color: white;
+}
+
+.label-meetings {
+    background: #17a2b8;
+    color: white;
+}
+
+.label-calendar {
+    background: #6c757d;
+    color: white;
+}

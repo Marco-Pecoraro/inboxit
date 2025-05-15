@@ -1,61 +1,57 @@
-const { syncEmailsFromGmail, trashEmail, getEmails } = require('../services/emailService');
+const emailService = require('../services/emailService');
+
+exports.getEmails = async (req, res) => {
+    try {
+        console.log('Richiesta /api/emails per userId:', req.user.userId);
+        const emails = await emailService.getEmails(req.user.accessToken, req.query.limit ? parseInt(req.query.limit) : undefined);
+        console.log('Email restituite:', emails.length);
+        res.json(emails);
+    } catch (err) {
+        console.error('Errore getEmails:', err.message);
+        res.status(500).json({ message: 'Errore recupero email: ' + err.message });
+    }
+};
 
 exports.syncEmails = async (req, res) => {
     try {
-        const token = req.user.accessToken; // Estratto dal JWT
-        console.log('Token ricevuto in syncEmails:', token ? 'Presente' : 'Assente');
-
-        if (!token) {
-            return res.status(401).json({ message: 'Token mancante' });
-        }
-
-        const emails = await syncEmailsFromGmail(token);
+        console.log('Richiesta /api/emails/sync per userId:', req.user.userId);
+        const emails = await emailService.syncEmailsFromGmail(req.user.accessToken, req.user.userId);
         console.log('Email sincronizzate:', emails.length);
         res.json(emails);
     } catch (err) {
-        console.error('Errore sincronizzazione in controller:', err.message, err.stack);
-        res.status(500).json({ message: 'Errore sincronizzazione email', error: err.message });
+        console.error('Errore syncEmails:', err.message);
+        res.status(500).json({ message: 'Errore sincronizzazione email: ' + err.message });
+    }
+};
+
+exports.sendEmail = async (req, res) => {
+    try {
+        const { to, subject, body } = req.body;
+        if (!to || !subject || !body) {
+            console.error('Dati mancanti per sendEmail:', req.body);
+            return res.status(400).json({ message: 'Compila tutti i campi' });
+        }
+        console.log('Invio email per userId:', req.user.userId, { to, subject });
+        const result = await emailService.sendEmail(req.user.accessToken, to, subject, body);
+        res.json(result);
+    } catch (err) {
+        console.error('Errore sendEmail:', err.message);
+        res.status(500).json({ message: 'Errore invio email: ' + err.message });
     }
 };
 
 exports.trashEmail = async (req, res) => {
     try {
-        const token = req.user.accessToken; // Estratto dal JWT
-        console.log('Token ricevuto in trashEmail:', token ? 'Presente' : 'Assente');
-
-        if (!token) {
-            return res.status(401).json({ message: 'Token mancante' });
-        }
-
         const { emailId } = req.body;
         if (!emailId) {
+            console.error('emailId mancante per trashEmail');
             return res.status(400).json({ message: 'ID email mancante' });
         }
-
-        const result = await trashEmail(token, emailId);
-        console.log('Email spostata nel cestino:', emailId);
+        console.log('Spostamento email nel cestino per userId:', req.user.userId, { emailId });
+        const result = await emailService.trashEmail(req.user.accessToken, emailId, req.user.userId);
         res.json(result);
     } catch (err) {
-        console.error('Errore spostamento email:', err.message, err.stack);
-        res.status(500).json({ message: 'Errore spostamento email nel cestino', error: err.message });
-    }
-};
-
-exports.getEmails = async (req, res) => {
-    try {
-        const token = req.user.accessToken; // Estratto dal JWT
-        console.log('Token ricevuto in getEmails:', token ? 'Presente' : 'Assente');
-
-        if (!token) {
-            return res.status(401).json({ message: 'Token mancante' });
-        }
-
-        const limit = parseInt(req.query.limit) || 150;
-        const emails = await getEmails(token, limit === 0 ? null : limit);
-        console.log('Email recuperate:', emails.length);
-        res.json(emails);
-    } catch (err) {
-        console.error('Errore recupero email:', err.message, err.stack);
-        res.status(500).json({ message: 'Errore recupero email', error: err.message });
+        console.error('Errore trashEmail:', err.message);
+        res.status(500).json({ message: 'Errore spostamento email: ' + err.message });
     }
 };
