@@ -1,42 +1,40 @@
-const { Configuration, OpenAIApi } = require('openai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+require('dotenv').config();
 
-const configuration = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-const openai = new OpenAIApi(configuration);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 async function classifyEmail({ subject, body }) {
-  const prompt = `
-Ti fornisco il contenuto di una email. 
-Analizza e restituisci SOLO un array JSON con categorie rilevanti tra: ["inbox", "important", "trash", "spam", "calendar", "meetings", "sent"].
-Esempio risposta: ["inbox", "meetings"]
+    try {
+        const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+        const prompt = `
+Sei un assistente AI. Ti fornisco il contenuto di una email. 
+Rispondi SOLO con un array JSON contenente categorie rilevanti tra: 
+["inbox", "important", "trash", "spam", "calendar", "meetings", "sent"].
 
+Esempio: ["inbox", "meetings"]
+
+Email:
 Oggetto: ${subject}
-Corpo:
-${body}
-  `;
+Contenuto: ${body}
+        `;
 
-  const response = await openai.createChatCompletion({
-    model: 'gpt-3.5-turbo',
-    messages: [
-      { role: 'system', content: 'Sei un classificatore di email esperto.' },
-      { role: 'user', content: prompt },
-    ],
-    temperature: 0.2,
-    max_tokens: 50,
-  });
+        const result = await model.generateContent(prompt);
+        const text = result.response.text();
 
-  const text = response.data.choices[0].message.content;
-  try {
-    const categories = JSON.parse(text);
-    if (Array.isArray(categories)) {
-      return categories;
+        try {
+            const categories = JSON.parse(text);
+            if (Array.isArray(categories)) {
+                return categories;
+            }
+        } catch (parseErr) {
+            console.error('Errore parsing risposta Gemini:', parseErr, text);
+        }
+
+        return ['inbox'];
+    } catch (err) {
+        console.error('Errore generazione Gemini:', err.message);
+        return ['inbox'];
     }
-  } catch (err) {
-    console.error('Errore parsing classificazione:', err, text);
-  }
-
-  return ['inbox'];
 }
 
 module.exports = { classifyEmail };

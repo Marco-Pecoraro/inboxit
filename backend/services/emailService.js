@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
 const { google } = require('googleapis');
+const { classifyEmail } = require('./emailClassifier');
+
 const Email = mongoose.model('Email', new mongoose.Schema({
     userId: String,
     id: String,
@@ -16,6 +18,23 @@ const getGmailClient = (accessToken) => {
     return google.gmail({ version: 'v1', auth: oauth2Client });
 };
 
+// Utility per creare una label se non esiste
+async function ensureGmailLabel(gmail, name) {
+    const res = await gmail.users.labels.list({ userId: 'me' });
+    const existing = res.data.labels.find(label => label.name.toLowerCase() === name.toLowerCase());
+    if (existing) return existing.id;
+
+    const newLabel = await gmail.users.labels.create({
+        userId: 'me',
+        requestBody: {
+            name,
+            labelListVisibility: 'labelShow',
+            messageListVisibility: 'show'
+        }
+    });
+    return newLabel.data.id;
+}
+
 exports.getEmails = async (accessToken, limit) => {
     try {
         console.log('Recupero email con limite:', limit);
@@ -24,31 +43,35 @@ exports.getEmails = async (accessToken, limit) => {
         const messages = res.data.messages || [];
 
         const emails = await Promise.all(messages.map(async (message) => {
-            const msg = await gmail.users.messages.get({ userId: 'me', id: message.id });
+            const msg = await gmail.users.messages.get({ userId: 'me', id: message.id, format: 'full' });
             const headers = msg.data.payload.headers;
             const from = headers.find(h => h.name === 'From')?.value || 'Sconosciuto';
             const subject = headers.find(h => h.name === 'Subject')?.value || '(senza oggetto)';
             const date = headers.find(h => h.name === 'Date')?.value || new Date().toISOString();
+            const labelIds = msg.data.labelIds || [];
             let body = '';
 
-            if (msg.data.payload.parts) {
-                const textPart = msg.data.payload.parts.find(part => part.mimeType === 'text/plain');
-                body = textPart ? Buffer.from(textPart.body.data, 'base64').toString('utf-8') : '';
-            } else {
-                body = msg.data.payload.body.data ? Buffer.from(msg.data.payload.body.data, 'base64').toString('utf-8') : '';
+            const parts = msg.data.payload.parts || [];
+            for (const part of parts) {
+                if (part.mimeType === 'text/plain' && part.body.data) {
+                    body = Buffer.from(part.body.data, 'base64').toString('utf-8');
+                    break;
+                }
+                if (part.mimeType === 'text/html' && part.body.data) {
+                    body = Buffer.from(part.body.data, 'base64').toString('utf-8');
+                    break;
+                }
+            }
+
+            if (!body && msg.data.payload.body?.data) {
+                body = Buffer.from(msg.data.payload.body.data, 'base64').toString('utf-8');
             }
 
             let email = await Email.findOne({ id: message.id });
             if (!email) {
-                email = new Email({
-                    userId: '',
-                    id: message.id,
-                    from,
-                    subject,
-                    body,
-                    date: new Date(date),
-                    categories: ['inbox']
-                });
+                const categories = await classifyEmail({ subject, body });
+                email = new Email({ userId: '', id: message.id, from, subject, body, date: new Date(date), categories });
+                await email.save();
             }
 
             return {
@@ -71,7 +94,6 @@ exports.getEmails = async (accessToken, limit) => {
 
 exports.syncEmailsFromGmail = async (accessToken, userId) => {
     try {
-        console.log('Sincronizzazione email per userId:', userId);
         const gmail = getGmailClient(accessToken);
         const res = await gmail.users.messages.list({ userId: 'me', maxResults: 50 });
         const messages = res.data.messages || [];
@@ -82,13 +104,20 @@ exports.syncEmailsFromGmail = async (accessToken, userId) => {
             const from = headers.find(h => h.name === 'From')?.value || 'Sconosciuto';
             const subject = headers.find(h => h.name === 'Subject')?.value || '(senza oggetto)';
             const date = headers.find(h => h.name === 'Date')?.value || new Date().toISOString();
-            let body = '';
 
+            let body = '';
             if (msg.data.payload.parts) {
                 const textPart = msg.data.payload.parts.find(part => part.mimeType === 'text/plain');
                 body = textPart ? Buffer.from(textPart.body.data, 'base64').toString('utf-8') : '';
             } else {
                 body = msg.data.payload.body.data ? Buffer.from(msg.data.payload.body.data, 'base64').toString('utf-8') : '';
+            }
+
+            let categories = ['inbox'];
+            try {
+                categories = await classifyEmail({ subject, body });
+            } catch (err) {
+                console.warn('Errore AI categorizzazione:', err.message);
             }
 
             let email = await Email.findOne({ id: message.id, userId });
@@ -100,8 +129,11 @@ exports.syncEmailsFromGmail = async (accessToken, userId) => {
                     subject,
                     body,
                     date: new Date(date),
-                    categories: ['inbox']
+                    categories
                 });
+                await email.save();
+            } else {
+                email.categories = categories;
                 await email.save();
             }
 
@@ -158,6 +190,24 @@ exports.trashEmail = async (accessToken, emailId, userId) => {
         return { id: emailId, categories: ['trash'] };
     } catch (err) {
         console.error('Errore trashEmail:', err.message);
+        throw err;
+    }
+};
+
+exports.updateEmailCategories = async (userId, emails) => {
+    try {
+        const bulkOps = emails.map(({ id, categories }) => ({
+            updateOne: {
+                filter: { id, userId },
+                update: { $set: { categories } }
+            }
+        }));
+
+        const result = await Email.bulkWrite(bulkOps);
+        console.log('Categorie aggiornate:', result.modifiedCount);
+        return { modifiedCount: result.modifiedCount };
+    } catch (err) {
+        console.error('Errore updateEmailCategories:', err.message);
         throw err;
     }
 };

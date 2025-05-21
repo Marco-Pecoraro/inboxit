@@ -17,6 +17,16 @@ const aiController = require('./controllers/aiController');
 
 const app = express();
 
+// Configura middleware per gestire payload più grandi
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+app.use(passport.initialize());
+app.use('/img', express.static(path.join(__dirname, '../frontend/img')));
+app.use(express.static(path.join(__dirname, '../frontend/login')));
+app.use('/home', express.static(path.join(__dirname, '../frontend/home')));
+
+// Middleware per verificare il token JWT
 const verifyToken = (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -35,17 +45,11 @@ const verifyToken = (req, res, next) => {
         next();
     } catch (err) {
         console.error('Errore autenticazione: Token non valido o scaduto', err.message);
-        return res.status(403).json({ message: 'Token non valido o scaduto' });
+        return res.status(403).json({ message: `Token non valido o scaduto: ${err.message}` });
     }
 };
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(passport.initialize());
-app.use('/img', express.static(path.join(__dirname, '../frontend/img')));
-app.use(express.static(path.join(__dirname, '../frontend/login')));
-app.use('/home', express.static(path.join(__dirname, '../frontend/home')));
-
+// Configurazione Google OAuth
 passport.use(new GoogleStrategy({
     clientID: process.env.CLIENT_ID,
     clientSecret: process.env.CLIENT_SECRET,
@@ -75,6 +79,7 @@ passport.use(new GoogleStrategy({
     }
 }));
 
+// Connessione a MongoDB
 mongoose.connect(process.env.MONGO_URI, {
     dbName: process.env.DB_NAME
 }).then(() => {
@@ -84,6 +89,7 @@ mongoose.connect(process.env.MONGO_URI, {
     process.exit(1);
 });
 
+// Route per autenticazione Google
 app.get('/auth/google', (req, res, next) => {
     console.log('Inizio flusso OAuth, redirect_uri:', 'http://localhost:8888/auth/google/callback');
     passport.authenticate('google', {
@@ -91,6 +97,7 @@ app.get('/auth/google', (req, res, next) => {
     })(req, res, next);
 });
 
+// Callback OAuth
 app.get('/auth/google/callback', passport.authenticate('google', { session: false, failureRedirect: '/?error=auth_failed' }), (req, res) => {
     try {
         const { accessToken, userId, email, name } = req.user;
@@ -107,6 +114,7 @@ app.get('/auth/google/callback', passport.authenticate('google', { session: fals
     }
 });
 
+// Route API
 app.get('/api/user', verifyToken, (req, res) => {
     try {
         console.log('Richiesta /api/user, restituisco dati utente:', { email: req.user.email, name: req.user.name });
@@ -121,16 +129,20 @@ app.get('/api/emails', verifyToken, emailController.getEmails);
 app.post('/api/emails/sync', verifyToken, emailController.syncEmails);
 app.post('/api/emails/send', verifyToken, emailController.sendEmail);
 app.post('/api/emails/trash', verifyToken, emailController.trashEmail);
+app.post('/api/emails/update-categories', verifyToken, emailController.updateCategories);
 app.post('/api/ai/reply', verifyToken, aiController.generateReply);
+app.post('/api/ai/gemini-reply', verifyToken, aiController.generateReply);
 app.post('/api/ai/categorize', verifyToken, aiController.categorizeEmail);
 app.get('/api/events', verifyToken, eventController.getEvents);
 app.post('/api/events', verifyToken, eventController.addEvent);
 app.delete('/api/events/:id', verifyToken, eventController.deleteEvent);
 
+// Route per la pagina principale
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/login/index.html'));
 });
 
+// Route per la pagina home
 app.get('/home', (req, res) => {
     const token = req.query.token || req.headers.authorization?.split('Bearer ')[1];
     if (!token) {
@@ -139,6 +151,12 @@ app.get('/home', (req, res) => {
     }
     console.log('Caricamento pagina /home con token:', token.substring(0, 20) + '...');
     res.sendFile(path.join(__dirname, '../frontend/home/index.html'));
+});
+
+// Middleware per gestire errori non catturati
+app.use((err, req, res, next) => {
+    console.error('Errore non gestito:', err.message, err.stack);
+    res.status(500).json({ message: `Errore server: ${err.message}` });
 });
 
 const PORT = process.env.PORT || 8888;

@@ -1,3 +1,4 @@
+const mongoose = require('mongoose'); // Aggiunto
 const MongoDB = require('../mongodb');
 
 let dbInstance = null;

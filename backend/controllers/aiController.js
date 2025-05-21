@@ -1,96 +1,152 @@
-const { OpenAI } = require('openai');
-require('dotenv').config();
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { format } = require('date-fns');
+const dedent = require('dedent');
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
-});
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
 
-const categories = ['inbox', 'sent', 'important', 'meetings', 'spam', 'trash', 'calendar'];
+const CATEGORY_IDS = ['Posta in arrivo', 'Inviate', 'Importanti', 'Riunioni', 'Calendario', 'Spam', 'Cestino'];
+const colors = ['#000000', '#434343', '#666666', '#999999', '#cccccc', '#efefef', '#f3f3f3', '#ffffff', '#fb4c2f', '#ffad47', '#fad165', '#16a766', '#43d692', '#4a86e8', '#a479e2', '#f691b3', '#f6c5be', '#ffe6c7', '#fef1d1', '#b9e4d0', '#c6f3de', '#c9daf8', '#e4d7f5', '#fcdee8', '#efa093', '#ffd6a2', '#fce8b3', '#89d3b2', '#a0eac9', '#a4c2f4', '#d0bcf1', '#fbc8d9', '#e66550', '#ffbc6b', '#fcda83', '#44b984', '#68dfa9', '#6d9eeb', '#b694e8', '#f7a7c0', '#cc3a21', '#eaa041', '#f2c960', '#149e60', '#3dc789', '#3c78d8', '#8e63ce', '#e07798', '#ac2b16', '#cf8933', '#d5ae49', '#0b804b', '#2a9c68', '#285bac', '#653e9b', '#b65775', '#822111', '#a46a21', '#aa8831', '#076239', '#1a764d', '#1c4587', '#41236d', '#83334c', '#464646', '#e7e7e7', '#0d3472', '#b6cff5', '#0d3b44', '#98d7e4', '#3d188e', '#e3d7ff', '#711a36', '#fbd3e0', '#8a1c0a', '#f2b2a8', '#7a2e0b', '#ffc8af', '#7a4706', '#ffdeb5', '#594c05', '#fbe983', '#684e07', '#fdedc1', '#0b4f30', '#b3efd3', '#04502e', '#a2dcc1', '#c2c2c2', '#4986e7', '#2da2bb', '#b99aff', '#994a64', '#f691b2', '#ff7537', '#ffad46', '#662e37', '#ebdbde', '#cca6ac', '#094228', '#42d692', '#16a765'];
 
-exports.generateReply = async (req, res) => {
-    try {
-        const { body } = req.body;
-        if (!body) {
-            console.error('Dati mancanti per generateReply:', req.body);
-            return res.status(400).json({ message: 'Contenuto email mancante' });
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+async function quickCategorize(email) {
+    const content = email.content.toLowerCase();
+    if (content.includes('promozione') || content.includes('offerta') || content.includes('newsletter')) return { id: email.id, categories: ['Spam'], backgroundColor: '#ffad47', textColor: '#000000' };
+    if (content.includes('lavoro') || content.includes('collega') || content.includes('deadline')) return { id: email.id, categories: ['Importanti'], backgroundColor: '#4a86e8', textColor: '#ffffff' };
+    if (content.includes('riunione') || content.includes('zoom') || content.includes('meet')) return { id: email.id, categories: ['Riunioni'], backgroundColor: '#16a766', textColor: '#ffffff' };
+    if (content.includes('calendario') || content.includes('evento') || content.includes('invito')) return { id: email.id, categories: ['Calendario'], backgroundColor: '#fad165', textColor: '#000000' };
+    if (content.includes('spam') || content.includes('clicca qui')) return { id: email.id, categories: ['Spam'], backgroundColor: '#ffad47', textColor: '#000000' };
+    if (email.from === email.userEmail) return { id: email.id, categories: ['Inviate'], backgroundColor: '#c9daf8', textColor: '#000000' };
+    return null;
+}
+
+async function categorizeSingleEmail(email, retries = 3, baseDelay = 1000) {
+    const quickResult = await quickCategorize(email);
+    if (quickResult) return quickResult;
+    for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+            const prompt = dedent`
+        Categorizza questa email in una delle seguenti categorie: ${CATEGORY_IDS.join(', ')}.
+        Fornisci solo il nome della categoria e il colore di sfondo e testo in formato JSON:
+        {"category": "Categoria", "backgroundColor": "#hex", "textColor": "#hex"}
+        Contenuto: ${email.content.slice(0, 500)}
+      `;
+            const result = await model.generateContent(prompt);
+            const jsonResponse = JSON.parse(result.response.text());
+            return { id: email.id, categories: [jsonResponse.category], backgroundColor: jsonResponse.backgroundColor, textColor: jsonResponse.textColor };
+        } catch (error) {
+            if (error.message.includes('429') && attempt < retries - 1) {
+                const delayMs = baseDelay * Math.pow(2, attempt);
+                console.warn(`Errore 429 per email ${email.id}, tentativo ${attempt + 1}/${retries}. Attendo ${delayMs}ms.`);
+                await delay(delayMs);
+                continue;
+            }
+            console.error(`Errore categorizzazione email ${email.id}:`, error.message);
+            return { id: email.id, categories: ['Posta in arrivo'], backgroundColor: '#ffffff', textColor: '#000000' };
         }
-
-        console.log('Generazione risposta AI per email:', body.substring(0, 50) + '...');
-
-        const prompt = `Sei un assistente AI per email. Scrivi una risposta professionale e concisa all'email seguente:\n\n${body}\n\nRispondi in italiano, mantenendo un tono formale e appropriato al contesto.`;
-
-        const response = await openai.chat.completions.create({
-            model: 'gpt-4o', // Usa gpt-4o, fallback a gpt-3.5-turbo se necessario
-            messages: [
-                { role: 'system', content: 'Sei un assistente esperto nella scrittura di email.' },
-                { role: 'user', content: prompt }
-            ],
-            max_tokens: 500,
-            temperature: 0.7
-        });
-
-        const reply = response.choices[0].message.content.trim();
-        console.log('Risposta AI generata:', reply.substring(0, 50) + '...');
-        res.json({ reply });
-    } catch (err) {
-        console.error('Errore generazione risposta AI:', err.message);
-        if (err.response && err.response.status === 404) {
-            console.error('Modello non trovato:', err.response.data);
-            return res.status(404).json({ message: 'Modello non disponibile. Contatta l\'amministratore.' });
-        }
-        res.status(500).json({ message: 'Errore durante la generazione della risposta AI' });
     }
-};
+}
+
+async function generateReply(email, userStyle = {}, retries = 3, baseDelay = 1000) {
+    for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+            const prompt = dedent`
+        <system_prompt>
+          <role>
+            You are an AI assistant that composes email bodies mirroring the sender’s writing style.
+          </role>
+          <instructions>
+            <goal>
+              Generate a ready-to-send email body that is professional, concise, and reflects the user’s style.
+            </goal>
+            <persona>
+              Write in the first person as the user.
+            </persona>
+            <style_adaptation>
+              ${JSON.stringify(userStyle)}
+              Include greeting if greetingPresent is true.
+              Include sign-off if signOffPresent is true.
+              Use emoji if emojiRate > 0.
+            </style_adaptation>
+            <formatting>
+              Separate paragraphs with two newlines.
+            </formatting>
+            <output_format>
+              Respond with the email body text only.
+            </output_format>
+          </instructions>
+        </system_prompt>
+        Genera una risposta professionale per questa email: ${email.content.slice(0, 500)}
+      `;
+            const result = await model.generateContent(prompt);
+            return { id: email.id, reply: result.response.text().trim() };
+        } catch (error) {
+            if (error.message.includes('429') && attempt < retries - 1) {
+                const delayMs = baseDelay * Math.pow(2, attempt);
+                console.warn(`Errore 429 per risposta email ${email.id}, tentativo ${attempt + 1}/${retries}. Attendo ${delayMs}ms.`);
+                await delay(delayMs);
+                continue;
+            }
+            console.error(`Errore generazione risposta email ${email.id}:`, error.message);
+            return { id: email.id, reply: 'Spiacenti, non è possibile generare una risposta al momento.' };
+        }
+    }
+}
+
+async function processEmailBatch(emails, batchSize = 10, requestDelay = 2000) {
+    const results = [];
+    const totalEmails = emails.length;
+    for (let i = 0; i < totalEmails; i += batchSize) {
+        const batch = emails.slice(i, i + batchSize);
+        console.log(`Processo batch ${i / batchSize + 1} con ${batch.length} email...`);
+        const batchResults = [];
+        for (const email of batch) {
+            const result = await categorizeSingleEmail(email);
+            batchResults.push(result);
+            await delay(requestDelay);
+        }
+        const allSuccessful = batchResults.every(result => result.categories[0] !== 'Posta in arrivo');
+        if (!allSuccessful) {
+            console.warn(`Alcune categorizzazioni nel batch ${i / batchSize + 1} sono fallite. Verifica i log.`);
+        }
+        results.push(...batchResults);
+        console.log(`Batch ${i / batchSize + 1} completato.`);
+    }
+    return results;
+}
 
 exports.categorizeEmail = async (req, res) => {
     try {
-        const { emails } = req.body;
+        const emails = req.body.emails;
         if (!emails || !Array.isArray(emails)) {
-            console.error('Dati mancanti per categorizeEmail:', req.body);
-            return res.status(400).json({ message: 'Lista email mancante o non valida' });
+            return res.status(400).json({ error: 'Email non valide' });
         }
-
-        console.log('Categorizzazione email per userId:', req.user.userId, 'Numero email:', emails.length);
-
-        const categorizedEmails = await Promise.all(emails.map(async (email) => {
-            if (email.categories && email.categories.length > 0) {
-                console.log('Email già categorizzata:', email.id);
-                return { id: email.id, categories: email.categories };
-            }
-
-            const content = `${email.subject || ''}\n${email.body || ''}`.substring(0, 1000);
-            const prompt = `Sei un assistente AI per la categorizzazione di email. Analizza il contenuto dell'email e assegna una o più categorie appropriate tra: ${categories.join(', ')}. Fornisci la risposta come un array di categorie (es. ["inbox", "important"]). Contenuto email:\n\n${content}`;
-
-            const response = await openai.chat.completions.create({
-                model: 'gpt-4o', // Usa gpt-4o, fallback a gpt-3.5-turbo
-                messages: [
-                    { role: 'system', content: 'Sei un assistente esperto nella categorizzazione di email.' },
-                    { role: 'user', content: prompt }
-                ],
-                max_tokens: 100,
-                temperature: 0.5
-            });
-
-            let assignedCategories = JSON.parse(response.choices[0].message.content.trim());
-            if (!Array.isArray(assignedCategories)) {
-                assignedCategories = ['inbox'];
-            }
-            assignedCategories = assignedCategories.filter(cat => categories.includes(cat));
-            if (assignedCategories.length === 0) {
-                assignedCategories = ['inbox'];
-            }
-
-            console.log('Categorie assegnate per email', email.id, ':', assignedCategories);
-            return { id: email.id, categories: assignedCategories };
-        }));
-
+        const categorizedEmails = await processEmailBatch(emails, 10, 2000);
+        const updateResult = await updateCategoriesInMongoDB(req.userId, categorizedEmails);
+        console.log(`Categorie aggiornate: ${updateResult.modifiedCount}`);
         res.json(categorizedEmails);
-    } catch (err) {
-        console.error('Errore categorizzazione email:', err.message);
-        if (err.response && err.response.status === 404) {
-            console.error('Modello non trovato:', err.response.data);
-            return res.status(404).json({ message: 'Modello non disponibile. Contatta l\'amministratore.' });
-        }
-        res.status(500).json({ message: 'Errore durante la categorizzazione delle email' });
+    } catch (error) {
+        console.error('Errore in categorizeEmail:', error);
+        res.status(500).json({ error: 'Errore durante la categorizzazione' });
     }
 };
+
+exports.generateReply = async (req, res) => {
+    try {
+        const email = req.body.email;
+        const userStyle = req.body.userStyle || { greetingPresent: true, signOffPresent: true, emojiRate: 0 };
+        if (!email || !email.id || !email.content) {
+            return res.status(400).json({ error: 'Dati email non validi' });
+        }
+        const replyResult = await generateReply(email, userStyle, 3, 1000);
+        res.json(replyResult);
+    } catch (error) {
+        console.error('Errore in generateReply:', error);
+        res.status(500).json({ error: 'Errore durante la generazione della risposta' });
+    }
+};
+
+async function updateCategoriesInMongoDB(userId, categorizedEmails) {
+    return { modifiedCount: 0 };
+}

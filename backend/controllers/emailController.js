@@ -55,3 +55,20 @@ exports.trashEmail = async (req, res) => {
         res.status(500).json({ message: 'Errore spostamento email: ' + err.message });
     }
 };
+
+exports.updateCategories = async (req, res) => {
+    try {
+        const { emails } = req.body;
+        if (!emails || !Array.isArray(emails)) {
+            console.error('Dati mancanti per updateCategories:', req.body);
+            return res.status(400).json({ message: 'Lista email mancante o non valida' });
+        }
+
+        console.log('Aggiornamento categorie per userId:', req.user.userId, 'numero email:', emails.length);
+        const result = await emailService.updateEmailCategories(req.user.userId, emails);
+        res.json(result);
+    } catch (err) {
+        console.error('Errore updateCategories:', err.message);
+        res.status(500).json({ message: 'Errore aggiornamento categorie: ' + err.message });
+    }
+};
