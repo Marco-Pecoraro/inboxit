@@ -243,128 +243,148 @@ async function loadEmailsToPage() {
 }
 
 async function categorizeEmails() {
-  try {
-    console.log("Inizio categorizzazione email");
-    const emailItems = document.querySelectorAll(".email-item");
-    const emailsToCategorize = Array.from(emailItems).map((item) => ({
-      id: item.getAttribute("data-id"),
-      subject: (item.getAttribute("data-subject") || "").substring(0, 100), // Limita a 100 caratteri
-      body: (item.getAttribute("data-body") || "").substring(0, 500), // Limita a 500 caratteri
-    }));
+    try {
+        console.log("Inizio categorizzazione email");
+        const emailItems = document.querySelectorAll(".email-item");
+        const emailsToCategorize = Array.from(emailItems).map((item) => ({
+            id: item.getAttribute("data-id"),
+            subject: (item.getAttribute("data-subject") || "").substring(0, 100), // Limita a 100 caratteri
+            body: (item.getAttribute("data-body") || "").substring(0, 500), // Limita a 500 caratteri
+        }));
 
-    console.log("Email da categorizzare:", emailsToCategorize.length, emailsToCategorize.map((e) => ({ id: e.id, subject: e.subject })));
+        console.log("Email da categorizzare:", emailsToCategorize.length, emailsToCategorize.map((e) => ({ id: e.id, subject: e.subject })));
 
-    if (emailsToCategorize.length === 0) {
-      console.log("Nessuna email da categorizzare");
-      return;
-    }
-
-    // Elabora in batch di 10 email
-    const batchSize = 10;
-    for (let i = 0; i < emailsToCategorize.length; i += batchSize) {
-      const batch = emailsToCategorize.slice(i, i + batchSize);
-      console.log(`Invio batch di ${batch.length} email`);
-
-      const response = await fetch("/api/ai/categorize", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${sessionStorage.getItem("gt")}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ emails: batch }),
-      });
-
-      console.log("Risposta /api/ai/categorize:", {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-      });
-
-      const responseText = await response.text();
-      console.log("Contenuto risposta grezza:", responseText);
-
-      if (!response.ok) {
-        try {
-          const errorData = JSON.parse(responseText);
-          console.error("Errore risposta /api/ai/categorize:", errorData);
-          throw new Error(errorData.message || `Errore categorizzazione email (status: ${response.status})`);
-        } catch (parseErr) {
-          console.error("Errore parsing risposta:", parseErr, responseText);
-          throw new Error(`Errore categorizzazione email: risposta non JSON (${response.status})`);
+        if (emailsToCategorize.length === 0) {
+            console.log("Nessuna email da categorizzare");
+            return;
         }
-      }
 
-      const categorizedEmails = JSON.parse(responseText);
-      console.log("Email categorizzate (batch):", categorizedEmails);
+        // Elabora in batch di 10 email
+        const batchSize = 10;
+        for (let i = 0; i < emailsToCategorize.length; i += batchSize) {
+            const batch = emailsToCategorize.slice(i, i + batchSize);
+            console.log(`Invio batch di ${batch.length} email`);
 
-      // Aggiorna le categorie nel DOM
-      categorizedEmails.forEach(({ id, categories }) => {
-        const emailItem = document.querySelector(`.email-item[data-id="${id}"]`);
-        if (emailItem) {
-          emailItem.setAttribute("data-category", categories.join(" "));
-          const category = categories[0] || "inbox";
-          const label = emailItem.querySelector(".email-label");
-          if (label) {
-            label.textContent = category;
-            label.className = `email-label label-${category}`;
-          } else {
-            console.warn(`Label non trovata per email ${id}`);
-          }
-        } else {
-          console.warn(`Email item non trovato per id ${id}`);
+            const response = await fetch("/api/ai/categorize", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${sessionStorage.getItem("gt")}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ emails: batch }),
+            });
+
+            console.log("Risposta /api/ai/categorize:", {
+                status: response.status,
+                statusText: response.statusText,
+                ok: response.ok,
+            });
+
+            const responseText = await response.text();
+            console.log("Contenuto risposta grezza:", responseText);
+
+            if (!response.ok) {
+                try {
+                    const errorData = JSON.parse(responseText);
+                    console.error("Errore risposta /api/ai/categorize:", errorData);
+                    throw new Error(errorData.message || `Errore categorizzazione email (status: ${response.status})`);
+                } catch (parseErr) {
+                    console.error("Errore parsing risposta:", parseErr, responseText);
+                    throw new Error(`Errore categorizzazione email: risposta non JSON (${response.status})`);
+                }
+            }
+
+            const categorizedEmails = JSON.parse(responseText);
+            console.log("Email categorizzate (batch):", categorizedEmails);
+
+            // Aggiorna le categorie nel DOM
+            categorizedEmails.forEach(({ id, categories }) => {
+                const emailItem = document.querySelector(`.email-item[data-id="${id}"]`);
+                if (emailItem) {
+                    emailItem.setAttribute("data-category", categories.join(" "));
+                    const category = categories[0] || "inbox";
+                    const label = emailItem.querySelector(".email-label");
+                    if (label) {
+                        label.textContent = category;
+                        label.className = `email-label label-${category}`;
+                    } else {
+                        console.warn(`Label non trovata per email ${id}`);
+                    }
+                } else {
+                    console.warn(`Email item non trovato per id ${id}`);
+                }
+            });
+
+            // Aggiorna il database con le nuove categorie
+            await fetch("/api/emails/update-categories", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${sessionStorage.getItem("gt")}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ emails: categorizedEmails }),
+            });
         }
-      });
 
-      // Aggiorna il database con le nuove categorie
-      await fetch("/api/emails/update-categories", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${sessionStorage.getItem("gt")}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ emails: categorizedEmails }),
-      });
+        updateEmailCounts();
+        filterEmails(currentCategory, searchInput.value.toLowerCase());
+    } catch (err) {
+        console.error("Errore categorizzazione email:", err);
+        alert("Errore categorizzazione email: " + err.message);
     }
-
-    updateEmailCounts();
-    filterEmails(currentCategory, searchInput.value.toLowerCase());
-  } catch (err) {
-    console.error("Errore categorizzazione email:", err);
-    alert("Errore categorizzazione email: " + err.message);
-  }
 }
 
 function renderEmails(emails) {
-    if (!emailListContainer) {
-        console.error("emailListContainer non trovato");
-        return;
-    }
-    emailListContainer.innerHTML = "";
+    const emailList = document.querySelector('.email-list-container');
+    emailList.innerHTML = '';
 
-    emails.forEach((email) => {
-        const emailElement = document.createElement("div");
-        emailElement.className = "email-item";
-        emailElement.setAttribute("data-id", email.id || "");
-        emailElement.setAttribute("data-category", email.categories?.join(" ") || "inbox");
-        emailElement.setAttribute("data-sender", email.from || "Sconosciuto");
-        emailElement.setAttribute("data-subject", email.subject || "(senza oggetto)");
-        emailElement.setAttribute("data-body", email.body || "");
-        emailElement.setAttribute("data-time", email.date ? new Date(email.date).toLocaleString() : "N/D");
+    emails.forEach(email => {
+        const label = email.categories?.[0] || 'Posta in arrivo';
+        const bgColor = email.backgroundColor || '#ddd';
+        const textColor = email.textColor || '#000';
 
-        const category = email.categories?.[0] || "inbox";
-        const safeFrom = window.sanitizeHtml(email.from || "Sconosciuto", { allowedTags: [] });
-        const safeSubject = window.sanitizeHtml(email.subject || "(senza oggetto)", { allowedTags: [] });
-        const safeBody = window.sanitizeHtml(email.body?.substring(0, 100) || "", { allowedTags: [] });
+        const emailElement = document.createElement('div');
+        emailElement.className = 'email-item';
+        emailElement.dataset.category = email.categories?.[0] || 'Posta in arrivo';
 
         emailElement.innerHTML = `
-      <div class="email-sender"><span class="email-label label-${category}">${category}</span>${safeFrom}</div>
-      <div class="email-subject">${safeSubject}</div>
-      <div class="email-time">${email.date ? new Date(email.date).toLocaleString() : "N/D"}</div>
-      <div class="email-preview">${safeBody}...</div>
-    `;
+            <div class="email-label" style="background-color: ${bgColor}; color: ${textColor};">${label}</div>
+            <div class="email-sender">${email.from}</div>
+            <div class="email-subject">${email.subject}</div>
+            <div class="email-preview">${sanitizeHtml(email.body.substring(0, 100))}...</div>
+            <div class="email-time">${new Date(email.date).toLocaleString()}</div>
+        `;
 
-        emailListContainer.appendChild(emailElement);
+        emailList.appendChild(emailElement);
     });
+}
+
+filterEmailsByCategory('Posta in arrivo');
+
+function filterEmailsByCategory(category) {
+    const emailItems = document.querySelectorAll('.email-item');
+
+    emailItems.forEach(item => {
+        const emailCategory = item.dataset.category;
+
+        if (category === 'Posta in arrivo') {
+            // Mostra tutte
+            item.style.display = 'grid';
+        } else if (emailCategory === category) {
+            item.style.display = 'grid';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+
+    // Evidenzia categoria attiva
+    document.querySelectorAll('.email-nav li').forEach(li => {
+        li.addEventListener('click', () => {
+            const category = li.dataset.category;
+            filterEmailsByCategory(category);
+        });
+    });
+
 }
 
 function filterEmails(category, searchTerm = "") {

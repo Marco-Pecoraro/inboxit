@@ -4,9 +4,9 @@ async function syncEmails() {
         const response = await fetch('/api/emails/sync', {
             method: 'POST',
             headers: {
+                'Authorization': `Bearer ${sessionStorage.getItem('gt')}`,
                 'Content-Type': 'application/json'
-            },
-            credentials: 'include'
+            }
         });
 
         if (!response.ok) {
@@ -24,7 +24,9 @@ async function syncEmails() {
 async function loadEmailsToPage() {
     try {
         const response = await fetch('/api/emails', {
-            credentials: 'include'
+            headers: {
+                'Authorization': `Bearer ${sessionStorage.getItem('gt')}`
+            }
         });
 
         if (!response.ok) {
@@ -45,20 +47,27 @@ function renderEmails(emails) {
     emails.forEach(email => {
         const emailElement = document.createElement('div');
         emailElement.className = 'email-item';
+        emailElement.setAttribute('data-id', email.id);
+        emailElement.setAttribute('data-category', email.categories?.join(' ') || 'inbox');
+
         emailElement.innerHTML = `
-            <div class="email-sender">${email.from}</div>
+            <div class="email-sender">
+                <span class="email-label label-${email.categories?.[0] || 'inbox'}">${email.categories?.[0] || 'inbox'}</span>
+                ${email.from}
+            </div>
             <div class="email-subject">${email.subject}</div>
-            <div class="email-preview">${email.body.substring(0, 100)}...</div>
+            <div class="email-preview">${email.body?.substring(0, 100) || ''}...</div>
             <div class="email-time">${new Date(email.date).toLocaleString()}</div>
         `;
+
         emailList.appendChild(emailElement);
     });
 }
 
 // Inizializzazione
-document.addEventListener('DOMContentLoaded', () => {
-    loadEmailsToPage();
-    
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadEmailsToPage();
+
     const syncButton = document.getElementById('sync-button');
     if (syncButton) {
         syncButton.addEventListener('click', async () => {

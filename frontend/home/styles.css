@@ -1144,9 +1144,12 @@ body.dark .reply-btn:hover {
 }
 
 .email-label {
+    width: fit-content;
+    height: fit-content;
     font-size: 10px;
     font-weight: bold;
     padding: 2px 6px;
+    display: inline-block;
     border-radius: 12px;
     margin-right: 6px;
     text-transform: uppercase;

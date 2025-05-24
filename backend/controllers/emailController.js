@@ -1,74 +1,56 @@
 const emailService = require('../services/emailService');
+const { categorizeEmailsWithGemini } = require('./aiController');
 
 exports.getEmails = async (req, res) => {
     try {
-        console.log('Richiesta /api/emails per userId:', req.user.userId);
-        const emails = await emailService.getEmails(req.user.accessToken, req.query.limit ? parseInt(req.query.limit) : undefined);
-        console.log('Email restituite:', emails.length);
+        const emails = await emailService.getEmails(req.user.accessToken, 100, req.user.userId);
         res.json(emails);
-    } catch (err) {
-        console.error('Errore getEmails:', err.message);
-        res.status(500).json({ message: 'Errore recupero email: ' + err.message });
+    } catch (error) {
+        console.error("Errore getEmails:", error);
+        res.status(500).json({ message: 'Errore nel caricamento delle email' });
     }
 };
 
 exports.syncEmails = async (req, res) => {
     try {
-        console.log('Richiesta /api/emails/sync per userId:', req.user.userId);
-        const emails = await emailService.syncEmailsFromGmail(req.user.accessToken, req.user.userId);
-        console.log('Email sincronizzate:', emails.length);
-        res.json(emails);
+        const syncedEmails = await emailService.syncEmailsFromGmail(req.user.accessToken, req.user.userId);
+
+        // Categorizza automaticamente con Gemini
+        const categorized = await categorizeEmailsWithGemini(syncedEmails, req.user.userId);
+        res.json(categorized);
     } catch (err) {
-        console.error('Errore syncEmails:', err.message);
-        res.status(500).json({ message: 'Errore sincronizzazione email: ' + err.message });
+        console.error("Errore syncEmails:", err);
+        res.status(500).json({ message: "Errore durante la sincronizzazione delle email" });
     }
 };
 
 exports.sendEmail = async (req, res) => {
+    const { to, subject, body } = req.body;
     try {
-        const { to, subject, body } = req.body;
-        if (!to || !subject || !body) {
-            console.error('Dati mancanti per sendEmail:', req.body);
-            return res.status(400).json({ message: 'Compila tutti i campi' });
-        }
-        console.log('Invio email per userId:', req.user.userId, { to, subject });
         const result = await emailService.sendEmail(req.user.accessToken, to, subject, body);
         res.json(result);
-    } catch (err) {
-        console.error('Errore sendEmail:', err.message);
-        res.status(500).json({ message: 'Errore invio email: ' + err.message });
+    } catch (error) {
+        res.status(500).json({ message: 'Errore invio email' });
     }
 };
 
 exports.trashEmail = async (req, res) => {
+    const { emailId } = req.body;
     try {
-        const { emailId } = req.body;
-        if (!emailId) {
-            console.error('emailId mancante per trashEmail');
-            return res.status(400).json({ message: 'ID email mancante' });
-        }
-        console.log('Spostamento email nel cestino per userId:', req.user.userId, { emailId });
         const result = await emailService.trashEmail(req.user.accessToken, emailId, req.user.userId);
         res.json(result);
-    } catch (err) {
-        console.error('Errore trashEmail:', err.message);
-        res.status(500).json({ message: 'Errore spostamento email: ' + err.message });
+    } catch (error) {
+        res.status(500).json({ message: 'Errore spostamento email nel cestino' });
     }
 };
 
 exports.updateCategories = async (req, res) => {
     try {
-        const { emails } = req.body;
-        if (!emails || !Array.isArray(emails)) {
-            console.error('Dati mancanti per updateCategories:', req.body);
-            return res.status(400).json({ message: 'Lista email mancante o non valida' });
-        }
-
-        console.log('Aggiornamento categorie per userId:', req.user.userId, 'numero email:', emails.length);
+        const emails = req.body.emails;
         const result = await emailService.updateEmailCategories(req.user.userId, emails);
         res.json(result);
     } catch (err) {
-        console.error('Errore updateCategories:', err.message);
-        res.status(500).json({ message: 'Errore aggiornamento categorie: ' + err.message });
+        console.error("Errore updateCategories:", err);
+        res.status(500).json({ message: "Errore aggiornamento categorie" });
     }
 };

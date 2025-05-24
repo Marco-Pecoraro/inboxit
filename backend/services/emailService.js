@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 const { google } = require('googleapis');
-const { classifyEmail } = require('./emailClassifier');
 
 const Email = mongoose.model('Email', new mongoose.Schema({
     userId: String,
@@ -9,7 +8,11 @@ const Email = mongoose.model('Email', new mongoose.Schema({
     subject: String,
     body: String,
     date: Date,
-    categories: [String]
+    categories: [String],
+    backgroundColor: String,
+    textColor: String,
+    gmailLabelIds: [String],
+    userEmail: String
 }));
 
 const getGmailClient = (accessToken) => {
@@ -18,74 +21,26 @@ const getGmailClient = (accessToken) => {
     return google.gmail({ version: 'v1', auth: oauth2Client });
 };
 
-// Utility per creare una label se non esiste
-async function ensureGmailLabel(gmail, name) {
-    const res = await gmail.users.labels.list({ userId: 'me' });
-    const existing = res.data.labels.find(label => label.name.toLowerCase() === name.toLowerCase());
-    if (existing) return existing.id;
-
-    const newLabel = await gmail.users.labels.create({
-        userId: 'me',
-        requestBody: {
-            name,
-            labelListVisibility: 'labelShow',
-            messageListVisibility: 'show'
-        }
-    });
-    return newLabel.data.id;
-}
-
-exports.getEmails = async (accessToken, limit) => {
+exports.getEmails = async (accessToken, limit, userId) => {
     try {
-        console.log('Recupero email con limite:', limit);
-        const gmail = getGmailClient(accessToken);
-        const res = await gmail.users.messages.list({ userId: 'me', maxResults: limit || 50 });
-        const messages = res.data.messages || [];
-
-        const emails = await Promise.all(messages.map(async (message) => {
-            const msg = await gmail.users.messages.get({ userId: 'me', id: message.id, format: 'full' });
-            const headers = msg.data.payload.headers;
-            const from = headers.find(h => h.name === 'From')?.value || 'Sconosciuto';
-            const subject = headers.find(h => h.name === 'Subject')?.value || '(senza oggetto)';
-            const date = headers.find(h => h.name === 'Date')?.value || new Date().toISOString();
-            const labelIds = msg.data.labelIds || [];
-            let body = '';
-
-            const parts = msg.data.payload.parts || [];
-            for (const part of parts) {
-                if (part.mimeType === 'text/plain' && part.body.data) {
-                    body = Buffer.from(part.body.data, 'base64').toString('utf-8');
-                    break;
-                }
-                if (part.mimeType === 'text/html' && part.body.data) {
-                    body = Buffer.from(part.body.data, 'base64').toString('utf-8');
-                    break;
-                }
-            }
-
-            if (!body && msg.data.payload.body?.data) {
-                body = Buffer.from(msg.data.payload.body.data, 'base64').toString('utf-8');
-            }
-
-            let email = await Email.findOne({ id: message.id });
-            if (!email) {
-                const categories = await classifyEmail({ subject, body });
-                email = new Email({ userId: '', id: message.id, from, subject, body, date: new Date(date), categories });
-                await email.save();
-            }
-
-            return {
-                id: email.id,
-                from: email.from,
-                subject: email.subject,
-                body: email.body,
-                date: email.date,
-                categories: email.categories
-            };
-        }));
-
+        console.log('Recupero email da MongoDB con limite:', limit, 'per userId:', userId);
+        const emails = await Email.find({ userId })
+            .sort({ date: -1 })
+            .limit(limit || 50)
+            .lean();
         console.log('Email recuperate:', emails.length);
-        return emails;
+        return emails.map(email => ({
+            id: email.id,
+            from: email.from,
+            subject: email.subject,
+            body: email.body,
+            date: email.date,
+            categories: email.categories,
+            backgroundColor: email.backgroundColor,
+            textColor: email.textColor,
+            gmailLabelIds: email.gmailLabelIds,
+            userEmail: email.userEmail
+        }));
     } catch (err) {
         console.error('Errore getEmails:', err.message);
         throw err;
@@ -95,58 +50,98 @@ exports.getEmails = async (accessToken, limit) => {
 exports.syncEmailsFromGmail = async (accessToken, userId) => {
     try {
         const gmail = getGmailClient(accessToken);
-        const res = await gmail.users.messages.list({ userId: 'me', maxResults: 50 });
-        const messages = res.data.messages || [];
-
-        const emails = await Promise.all(messages.map(async (message) => {
-            const msg = await gmail.users.messages.get({ userId: 'me', id: message.id });
-            const headers = msg.data.payload.headers;
-            const from = headers.find(h => h.name === 'From')?.value || 'Sconosciuto';
-            const subject = headers.find(h => h.name === 'Subject')?.value || '(senza oggetto)';
-            const date = headers.find(h => h.name === 'Date')?.value || new Date().toISOString();
-
-            let body = '';
-            if (msg.data.payload.parts) {
-                const textPart = msg.data.payload.parts.find(part => part.mimeType === 'text/plain');
-                body = textPart ? Buffer.from(textPart.body.data, 'base64').toString('utf-8') : '';
-            } else {
-                body = msg.data.payload.body.data ? Buffer.from(msg.data.payload.body.data, 'base64').toString('utf-8') : '';
-            }
-
-            let categories = ['inbox'];
-            try {
-                categories = await classifyEmail({ subject, body });
-            } catch (err) {
-                console.warn('Errore AI categorizzazione:', err.message);
-            }
-
-            let email = await Email.findOne({ id: message.id, userId });
-            if (!email) {
-                email = new Email({
+        const labels = ['INBOX', 'SENT', 'IMPORTANT', 'SPAM', 'TRASH'];
+        const emails = [];
+        for (const label of labels) {
+            const res = await gmail.users.messages.list({ userId: 'me', labelIds: [label], maxResults: 50 });
+            const messages = res.data.messages || [];
+            for (const message of messages) {
+                const msg = await gmail.users.messages.get({ userId: 'me', id: message.id, format: 'full' });
+                const headers = msg.data.payload.headers || [];
+                const from = headers.find(h => h.name.toLowerCase() === 'from')?.value || 'Sconosciuto';
+                const subject = headers.find(h => h.name.toLowerCase() === 'subject')?.value || '(senza oggetto)';
+                const date = headers.find(h => h.name.toLowerCase() === 'date')?.value || new Date().toISOString();
+                const labelIds = msg.data.labelIds || [];
+                let body = '';
+                const parts = msg.data.payload.parts || [];
+                for (const part of parts) {
+                    if (part.mimeType === 'text/plain' && part.body.data) {
+                        body = Buffer.from(part.body.data, 'base64').toString('utf-8');
+                        break;
+                    }
+                    if (part.mimeType === 'text/html' && part.body.data) {
+                        body = Buffer.from(part.body.data, 'base64').toString('utf-8');
+                        break;
+                    }
+                }
+                if (!body && msg.data.payload.body?.data) {
+                    body = Buffer.from(msg.data.payload.body.data, 'base64').toString('utf-8');
+                }
+                const content = body.toLowerCase();
+                const subjectLower = subject.toLowerCase();
+                const initialCategory = labelIds.includes('SENT') ? ['Inviate'] :
+                    labelIds.includes('IMPORTANT') ? ['Importanti'] :
+                        labelIds.includes('SPAM') ? ['Spam'] :
+                            labelIds.includes('TRASH') ? ['Cestino'] :
+                                content.includes('riunione') || content.includes('zoom') || content.includes('meet') || subjectLower.includes('riunione') ? ['Riunioni'] :
+                                    content.includes('calendario') || content.includes('evento') || content.includes('invito') || subjectLower.includes('invito') ? ['Calendario'] :
+                                        ['Posta in arrivo'];
+                const backgroundColor = labelIds.includes('SENT') ? '#c9daf8' :
+                    labelIds.includes('IMPORTANT') ? '#4a86e8' :
+                        labelIds.includes('SPAM') ? '#ffad47' :
+                            labelIds.includes('TRASH') ? '#e66550' :
+                                initialCategory[0] === 'Riunioni' ? '#16a766' :
+                                    initialCategory[0] === 'Calendario' ? '#fad165' :
+                                        '#ffffff';
+                const textColor = labelIds.includes('SENT') ? '#000000' :
+                    labelIds.includes('IMPORTANT') ? '#ffffff' :
+                        labelIds.includes('SPAM') ? '#000000' :
+                            labelIds.includes('TRASH') ? '#ffffff' :
+                                initialCategory[0] === 'Riunioni' ? '#ffffff' :
+                                    initialCategory[0] === 'Calendario' ? '#000000' :
+                                        '#000000';
+                const emailData = {
                     userId,
                     id: message.id,
                     from,
                     subject,
                     body,
                     date: new Date(date),
-                    categories
+                    categories: initialCategory,
+                    backgroundColor,
+                    textColor,
+                    gmailLabelIds: labelIds,
+                    userEmail: userId
+                };
+                let email = await Email.findOne({ id: message.id, userId });
+                if (!email) {
+                    email = new Email(emailData);
+                    await email.save();
+                } else {
+                    email.from = from;
+                    email.subject = subject;
+                    email.body = body;
+                    email.date = new Date(date);
+                    email.categories = initialCategory;
+                    email.backgroundColor = backgroundColor;
+                    email.textColor = textColor;
+                    email.gmailLabelIds = labelIds;
+                    await email.save();
+                }
+                emails.push({
+                    id: email.id,
+                    from: email.from,
+                    subject: email.subject,
+                    body: email.body,
+                    date: email.date,
+                    categories: email.categories,
+                    backgroundColor: email.backgroundColor,
+                    textColor: email.textColor,
+                    gmailLabelIds: email.gmailLabelIds,
+                    userEmail: email.userEmail
                 });
-                await email.save();
-            } else {
-                email.categories = categories;
-                await email.save();
             }
-
-            return {
-                id: email.id,
-                from: email.from,
-                subject: email.subject,
-                body: email.body,
-                date: email.date,
-                categories: email.categories
-            };
-        }));
-
+        }
         console.log('Email sincronizzate:', emails.length);
         return emails;
     } catch (err) {
@@ -161,12 +156,10 @@ exports.sendEmail = async (accessToken, to, subject, body) => {
         const raw = Buffer.from(
             `To: ${to}\nSubject: ${subject}\nContent-Type: text/plain; charset=utf-8\n\n${body}`
         ).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-
         const res = await gmail.users.messages.send({
             userId: 'me',
             requestBody: { raw }
         });
-
         console.log('Email inviata:', res.data.id);
         return { id: res.data.id };
     } catch (err) {
@@ -179,15 +172,15 @@ exports.trashEmail = async (accessToken, emailId, userId) => {
     try {
         const gmail = getGmailClient(accessToken);
         await gmail.users.messages.trash({ userId: 'me', id: emailId });
-
         const email = await Email.findOne({ id: emailId, userId });
         if (email) {
-            email.categories = ['trash'];
+            email.categories = ['Cestino'];
+            email.backgroundColor = '#e66550';
+            email.textColor = '#ffffff';
             await email.save();
         }
-
         console.log('Email spostata nel cestino:', emailId);
-        return { id: emailId, categories: ['trash'] };
+        return { id: emailId, categories: ['Cestino'], backgroundColor: '#e66550', textColor: '#ffffff' };
     } catch (err) {
         console.error('Errore trashEmail:', err.message);
         throw err;
@@ -196,13 +189,12 @@ exports.trashEmail = async (accessToken, emailId, userId) => {
 
 exports.updateEmailCategories = async (userId, emails) => {
     try {
-        const bulkOps = emails.map(({ id, categories }) => ({
+        const bulkOps = emails.map(({ id, categories, backgroundColor, textColor }) => ({
             updateOne: {
                 filter: { id, userId },
-                update: { $set: { categories } }
+                update: { $set: { categories, backgroundColor, textColor } }
             }
         }));
-
         const result = await Email.bulkWrite(bulkOps);
         console.log('Categorie aggiornate:', result.modifiedCount);
         return { modifiedCount: result.modifiedCount };
