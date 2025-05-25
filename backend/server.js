@@ -130,8 +130,9 @@ app.post('/api/emails/sync', verifyToken, emailController.syncEmails);
 app.post('/api/emails/send', verifyToken, emailController.sendEmail);
 app.post('/api/emails/trash', verifyToken, emailController.trashEmail);
 app.post('/api/emails/update-categories', verifyToken, emailController.updateCategories);
+app.get('/api/emails/:emailId/attachments/:attachmentId', verifyToken, emailController.getAttachment); // New route for attachments
 app.post('/api/ai/reply', verifyToken, aiController.generateReply);
-app.post('/api/ai/gemini-reply', verifyToken, aiController.generateReply);
+app.post('/api/ai/gemini-reply', verifyToken, aiController.generateReply); // Reinstated as per script.js
 app.post('/api/ai/categorize', verifyToken, aiController.categorizeEmail);
 app.get('/api/events', verifyToken, eventController.getEvents);
 app.post('/api/events', verifyToken, eventController.addEvent);

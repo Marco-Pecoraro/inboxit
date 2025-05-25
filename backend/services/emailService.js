@@ -12,7 +12,14 @@ const Email = mongoose.model('Email', new mongoose.Schema({
     backgroundColor: String,
     textColor: String,
     gmailLabelIds: [String],
-    userEmail: String
+    userEmail: String,
+    attachments: [{
+        filename: String,
+        mimeType: String,
+        size: Number,
+        attachmentId: String,
+        partId: String
+    }]
 }));
 
 const getGmailClient = (accessToken) => {
@@ -23,12 +30,10 @@ const getGmailClient = (accessToken) => {
 
 exports.getEmails = async (accessToken, limit, userId) => {
     try {
-        console.log('Recupero email da MongoDB con limite:', limit, 'per userId:', userId);
         const emails = await Email.find({ userId })
             .sort({ date: -1 })
             .limit(limit || 50)
             .lean();
-        console.log('Email recuperate:', emails.length);
         return emails.map(email => ({
             id: email.id,
             from: email.from,
@@ -39,7 +44,8 @@ exports.getEmails = async (accessToken, limit, userId) => {
             backgroundColor: email.backgroundColor,
             textColor: email.textColor,
             gmailLabelIds: email.gmailLabelIds,
-            userEmail: email.userEmail
+            userEmail: email.userEmail,
+            attachments: email.attachments || []
         }));
     } catch (err) {
         console.error('Errore getEmails:', err.message);
@@ -50,7 +56,7 @@ exports.getEmails = async (accessToken, limit, userId) => {
 exports.syncEmailsFromGmail = async (accessToken, userId) => {
     try {
         const gmail = getGmailClient(accessToken);
-        const labels = ['INBOX', 'SENT', 'IMPORTANT', 'SPAM', 'TRASH'];
+        const labels = ['INBOX', 'SENT', 'IMPORTANT', 'SPAM', 'TRASH', 'CATEGORY_PROMOTIONS'];
         const emails = [];
         for (const label of labels) {
             const res = await gmail.users.messages.list({ userId: 'me', labelIds: [label], maxResults: 50 });
@@ -64,42 +70,61 @@ exports.syncEmailsFromGmail = async (accessToken, userId) => {
                 const labelIds = msg.data.labelIds || [];
                 let body = '';
                 const parts = msg.data.payload.parts || [];
+                const attachments = [];
+
+                // Process attachments
                 for (const part of parts) {
+                    if (part.filename && part.body.attachmentId) {
+                        attachments.push({
+                            filename: part.filename,
+                            mimeType: part.mimeType,
+                            size: part.body.size,
+                            attachmentId: part.body.attachmentId,
+                            partId: part.partId
+                        });
+                    }
                     if (part.mimeType === 'text/plain' && part.body.data) {
                         body = Buffer.from(part.body.data, 'base64').toString('utf-8');
-                        break;
-                    }
-                    if (part.mimeType === 'text/html' && part.body.data) {
+                    } else if (part.mimeType === 'text/html' && part.body.data) {
                         body = Buffer.from(part.body.data, 'base64').toString('utf-8');
-                        break;
                     }
                 }
                 if (!body && msg.data.payload.body?.data) {
                     body = Buffer.from(msg.data.payload.body.data, 'base64').toString('utf-8');
                 }
+
                 const content = body.toLowerCase();
                 const subjectLower = subject.toLowerCase();
-                const initialCategory = labelIds.includes('SENT') ? ['Inviate'] :
-                    labelIds.includes('IMPORTANT') ? ['Importanti'] :
-                        labelIds.includes('SPAM') ? ['Spam'] :
-                            labelIds.includes('TRASH') ? ['Cestino'] :
-                                content.includes('riunione') || content.includes('zoom') || content.includes('meet') || subjectLower.includes('riunione') ? ['Riunioni'] :
-                                    content.includes('calendario') || content.includes('evento') || content.includes('invito') || subjectLower.includes('invito') ? ['Calendario'] :
-                                        ['Posta in arrivo'];
-                const backgroundColor = labelIds.includes('SENT') ? '#c9daf8' :
-                    labelIds.includes('IMPORTANT') ? '#4a86e8' :
-                        labelIds.includes('SPAM') ? '#ffad47' :
-                            labelIds.includes('TRASH') ? '#e66550' :
-                                initialCategory[0] === 'Riunioni' ? '#16a766' :
-                                    initialCategory[0] === 'Calendario' ? '#fad165' :
-                                        '#ffffff';
-                const textColor = labelIds.includes('SENT') ? '#000000' :
-                    labelIds.includes('IMPORTANT') ? '#ffffff' :
-                        labelIds.includes('SPAM') ? '#000000' :
-                            labelIds.includes('TRASH') ? '#ffffff' :
-                                initialCategory[0] === 'Riunioni' ? '#ffffff' :
-                                    initialCategory[0] === 'Calendario' ? '#000000' :
-                                        '#000000';
+                const categories = [];
+                if (labelIds.includes('SENT')) categories.push('Inviate');
+                if (labelIds.includes('IMPORTANT')) categories.push('Importanti');
+                if (labelIds.includes('SPAM')) categories.push('Spam');
+                if (labelIds.includes('TRASH')) categories.push('Cestino');
+                if (labelIds.includes('CATEGORY_PROMOTIONS')) categories.push('Promozioni');
+                if (labelIds.includes('UNREAD') && !labelIds.includes('SENT')) categories.push('Da rispondere');
+                if (content.includes('riunione') || content.includes('zoom') || content.includes('meet') || subjectLower.includes('riunione')) categories.push('Riunioni');
+                if (content.includes('calendario') || content.includes('evento') || content.includes('invito') || subjectLower.includes('invito')) categories.push('Calendario');
+                if (!categories.length) categories.push('Posta in arrivo');
+
+                const backgroundColor = categories.includes('Inviate') ? '#c9daf8' :
+                    categories.includes('Importanti') ? '#4a86e8' :
+                        categories.includes('Spam') ? '#ffad47' :
+                            categories.includes('Cestino') ? '#e66550' :
+                                categories.includes('Riunioni') ? '#16a766' :
+                                    categories.includes('Calendario') ? '#fad165' :
+                                        categories.includes('Promozioni') ? '#f4b400' :
+                                            categories.includes('Da rispondere') ? '#ff6f61' :
+                                                '#ffffff';
+                const textColor = categories.includes('Inviate') ? '#000000' :
+                    categories.includes('Importanti') ? '#ffffff' :
+                        categories.includes('Spam') ? '#000000' :
+                            categories.includes('Cestino') ? '#ffffff' :
+                                categories.includes('Riunioni') ? '#ffffff' :
+                                    categories.includes('Calendario') ? '#000000' :
+                                        categories.includes('Promozioni') ? '#000000' :
+                                            categories.includes('Da rispondere') ? '#ffffff' :
+                                                '#000000';
+
                 const emailData = {
                     userId,
                     id: message.id,
@@ -107,12 +132,14 @@ exports.syncEmailsFromGmail = async (accessToken, userId) => {
                     subject,
                     body,
                     date: new Date(date),
-                    categories: initialCategory,
+                    categories,
                     backgroundColor,
                     textColor,
                     gmailLabelIds: labelIds,
-                    userEmail: userId
+                    userEmail: userId,
+                    attachments
                 };
+
                 let email = await Email.findOne({ id: message.id, userId });
                 if (!email) {
                     email = new Email(emailData);
@@ -122,10 +149,11 @@ exports.syncEmailsFromGmail = async (accessToken, userId) => {
                     email.subject = subject;
                     email.body = body;
                     email.date = new Date(date);
-                    email.categories = initialCategory;
+                    email.categories = categories;
                     email.backgroundColor = backgroundColor;
                     email.textColor = textColor;
                     email.gmailLabelIds = labelIds;
+                    email.attachments = attachments;
                     await email.save();
                 }
                 emails.push({
@@ -138,11 +166,11 @@ exports.syncEmailsFromGmail = async (accessToken, userId) => {
                     backgroundColor: email.backgroundColor,
                     textColor: email.textColor,
                     gmailLabelIds: email.gmailLabelIds,
-                    userEmail: email.userEmail
+                    userEmail: email.userEmail,
+                    attachments: email.attachments
                 });
             }
         }
-        console.log('Email sincronizzate:', emails.length);
         return emails;
     } catch (err) {
         console.error('Errore syncEmailsFromGmail:', err.message);
@@ -160,7 +188,6 @@ exports.sendEmail = async (accessToken, to, subject, body) => {
             userId: 'me',
             requestBody: { raw }
         });
-        console.log('Email inviata:', res.data.id);
         return { id: res.data.id };
     } catch (err) {
         console.error('Errore sendEmail:', err.message);
@@ -179,7 +206,6 @@ exports.trashEmail = async (accessToken, emailId, userId) => {
             email.textColor = '#ffffff';
             await email.save();
         }
-        console.log('Email spostata nel cestino:', emailId);
         return { id: emailId, categories: ['Cestino'], backgroundColor: '#e66550', textColor: '#ffffff' };
     } catch (err) {
         console.error('Errore trashEmail:', err.message);
@@ -196,10 +222,29 @@ exports.updateEmailCategories = async (userId, emails) => {
             }
         }));
         const result = await Email.bulkWrite(bulkOps);
-        console.log('Categorie aggiornate:', result.modifiedCount);
         return { modifiedCount: result.modifiedCount };
     } catch (err) {
         console.error('Errore updateEmailCategories:', err.message);
+        throw err;
+    }
+};
+
+exports.getAttachment = async (accessToken, emailId, attachmentId) => {
+    try {
+        const gmail = getGmailClient(accessToken);
+        const res = await gmail.users.messages.attachments.get({
+            userId: 'me',
+            messageId: emailId,
+            id: attachmentId
+        });
+        return {
+            data: res.data.data,
+            size: res.data.size,
+            filename: (await Email.findOne({ id: emailId, 'attachments.attachmentId': attachmentId }, { 'attachments.$': 1 })).attachments[0].filename,
+            mimeType: (await Email.findOne({ id: emailId, 'attachments.attachmentId': attachmentId }, { 'attachments.$': 1 })).attachments[0].mimeType
+        };
+    } catch (err) {
+        console.error('Errore getAttachment:', err.message);
         throw err;
     }
 };

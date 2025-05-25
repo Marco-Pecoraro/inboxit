@@ -81,3 +81,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 });
+
+function filterEmailsByCategory(category) {
+    const items = document.querySelectorAll('.email-item');
+
+    items.forEach(item => {
+        const categories = (item.getAttribute('data-category') || '').split(' ');
+        if (category === 'inbox' || categories.includes(category)) {
+            item.style.display = 'grid';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+
+    // aggiorna evidenziazione menu
+    document.querySelectorAll('.email-nav li').forEach(li => {
+        li.classList.toggle('active', li.dataset.category === category);
+    });
+}
