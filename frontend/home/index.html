@@ -2,81 +2,151 @@
 <html lang="it">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>inboxit - Home</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>inboxit</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sanitize-html@2.7.0/dist/sanitize-html.min.js"></script>
 </head>
 
 <body>
-    <div id="loadingOverlay" class="loading-overlay">
-        <div class="loader"></div>
-        <p>Caricamento...</p>
+    <div id="loadingOverlay" style="display: none;">
+        <i class="fas fa-spinner fa-spin"></i>
     </div>
-    <div id="overlay" class="overlay"></div>
-    <header class="app-header">
-        <h1 class="app-title">inboxit</h1>
-        <div class="search-bar">
-            <input type="text" id="searchInput" placeholder="Cerca email...">
-        </div>
-        <div class="header-actions">
-            <select id="emailLimit" class="email-limit">
-                <option value="50">50</option>
-                <option value="100">100</option>
-                <option value="150">150</option>
-                <option value="all">Tutte</option>
-            </select>
-            <button class="compose-btn"><i class="fas fa-pen"></i> Scrivi</button>
-            <button class="settings-btn"><i class="fas fa-cog"></i></button>
-            <button class="sync-btn"><i class="fas fa-sync"></i></button>
-        </div>
-    </header>
-    <nav class="email-nav">
-        <ul>
-            <li data-category="inbox" class="active">Posta in arrivo <span class="email-count">0</span></li>
-            <li data-category="sent">Inviate <span class="email-count">0</span></li>
-            <li data-category="important">Importanti <span class="email-count">0</span></li>
-            <li data-category="meetings">Riunioni <span class="email-count">0</span></li>
-            <li data-category="calendar">Calendario <span class="email-count">0</span></li>
-            <li data-category="spam">Spam <span class="email-count">0</span></li>
-            <li data-category="trash">Cestino <span class="email-count">0</span></li>
-            <li data-category="promotions">Promozioni <span class="email-count">0</span></li>
-            <li data-category="toreply">Da rispondere <span class="email-count">0</span></li>
-        </ul>
-    </nav>
-    <div class="email-header">
-        <div>Da</div>
-        <div>Oggetto</div>
-        <div>Data</div>
-    </div>
-    <div class="main-app">
-        <div class="email-list">
-            <div class="email-list-container"></div>
-        </div>
-        <section id="calendarSection" class="calendar-section">
-            <div class="calendar-header">
-                <button class="calendar-nav prev"><i class="fas fa-chevron-left"></i></button>
-                <h2 id="calendarMonth"></h2>
-                <button class="calendar-nav next"><i class="fas fa-chevron-right"></i></button>
+    <div id="overlay"></div>
+
+    <div class="container">
+        <!-- Colonna sinistra -->
+        <div class="left-rectangle">
+            <div class="sidebar-content">
+                <h3 class="sidebar-title">Gestione</h3>
+                <div class="sidebar-section">
+                    <details>
+                        <summary>Contatti</summary>
+                        <ul>
+                            <li data-email="mario.rossi@example.com">Mario Rossi</li>
+                            <li data-email="luisa.bianchi@example.com">Luisa Bianchi</li>
+                            <li data-email="supporto@azienda.it">supporto@azienda.it</li>
+                        </ul>
+                    </details>
+                    <details>
+                        <summary>Preferiti</summary>
+                        <ul>
+                            <li data-email-id="email1">Email 1</li>
+                            <li data-email-id="email2">Email 2</li>
+                        </ul>
+                    </details>
+                    <div class="sidebar-item" data-category="draft">Bozze</div>
+                    <div class="sidebar-labels">
+                        <div class="label-header">Gestione Etichette</div>
+                        <button class="label-btn">➕ Aggiungi</button>
+                        <button class="label-btn">✏️ Modifica</button>
+                        <button class="label-btn">🗑️ Cancella</button>
+                    </div>
+                </div>
             </div>
-            <div id="calendarGrid" class="calendar-grid"></div>
-            <div id="eventsList" class="events"></div>
-            <button class="add-event-btn"><i class="fas fa-plus"></i> Aggiungi Evento</button>
-        </section>
+        </div>
+
+        <!-- Area principale -->
+        <div class="hero">
+            <header class="app-header">
+                <h1 class="app-title">inboxit</h1>
+                <div class="search-bar">
+                    <input type="text" id="searchInput" placeholder="Cerca email..." />
+                </div>
+                <div class="header-actions">
+                    <select class="email-limit" id="emailLimit">
+                        <option value="10">10 email</option>
+                        <option value="20">20 email</option>
+                        <option value="50">50 email</option>
+                    </select>
+                    <button class="compose-btn"><span class="material-symbols-outlined">
+                            edit
+                        </span> Scrivi</button>
+                    <button class="settings-btn"><span class="material-symbols-outlined">
+                            settings
+                        </span></button>
+                    <button class="sync-btn"><span class="material-symbols-outlined">
+                            sync
+                        </span></i></button>
+                </div>
+            </header>
+            <nav class="email-nav">
+                <ul>
+                    <li data-category="inbox" class="active">Posta in Arrivo <span class="email-count">0</span></li>
+                    <li data-category="sent">Inviate <span class="email-count">0</span></li>
+                    <li data-category="important">Importanti <span class="email-count">0</span></li>
+                    <li data-category="meetings">Riunioni <span class="email-count">0</span></li>
+                    <li data-category="calendar">Calendario <span class="email-count">0</span></li>
+                    <li data-category="spam">Spam <span class="email-count">0</span></li>
+                    <li data-category="trash">Cestino <span class="email-count">0</span></li>
+                    <li data-category="promotions">Promozioni <span class="email-count">0</span></li>
+                    <li data-category="toreply">Da rispondere <span class="email-count">0</span></li>
+                </ul>
+            </nav>
+            <div class="email-header">
+                <div>Etichetta</div>
+                <div></div>
+                <div>Mittente</div>
+                <div>Oggetto</div>
+                <div>Anteprima</div>
+                <div>Data</div>
+            </div>
+            <main class="main-app">
+                <div class="email-list">
+                    <div class="email-list-container"></div>
+                </div>
+                <section id="calendarSection" class="calendar-section">
+                    <h2>Calendario</h2>
+                    <div class="calendar-header">
+                        <button class="calendar-nav prev">←</button>
+                        <span id="calendarMonth"></span>
+                        <button class="calendar-nav next">→</button>
+                    </div>
+                    <div id="calendarGrid" class="calendar-grid"></div>
+                    <div id="eventsList" class="events"></div>
+                </section>
+            </main>
+        </div>
+
+        <!-- Colonna destra -->
+        <div class="right-rectangle">
+            <div class="chat-box">
+                <div class="chat-suggestions">
+                    <h4><u>inboxit</u> AI</h4>
+                    <div class="suggestion-item">Inviamo un email a...</div>
+                    <div class="suggestion-item">Come cambio la categorizzazione delle email?</div>
+                    <div class="suggestion-item">Imposta il tema scuro</div>
+                </div>
+                <div class="chat-messages" id="chatMessages">
+                    <div class="chat-message bot">Ciao! Come posso aiutarti oggi?</div>
+                </div>
+                <div class="chat-input-area">
+                    <textarea id="chatInput" placeholder="Scrivi un messaggio..."></textarea>
+                    <div class="chat-buttons">
+                        <button class="chat-send-btn">Invia</button>
+                        <button class="chat-clear-btn">Pulisci</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <!-- Modals -->
     <div id="composeModal" class="compose-modal">
         <div class="compose-header">
             <h3>Nuova Email</h3>
             <button class="close-btn">×</button>
         </div>
         <div class="compose-body">
-            <input type="email" class="compose-input" placeholder="A">
-            <input type="text" class="compose-subject" placeholder="Oggetto">
-            <textarea class="compose-text" placeholder="Scrivi il tuo messaggio..."></textarea>
+            <input type="email" class="compose-input" placeholder="A" />
+            <input type="text" class="compose-subject" placeholder="Oggetto" />
+            <textarea class="compose-text" placeholder="Messaggio"></textarea>
         </div>
         <div class="compose-footer">
-            <button class="send-btn"><i class="fas fa-paper-plane"></i> Invia</button>
+            <button class="send-btn">Invia</button>
         </div>
     </div>
     <div id="settingsModal" class="settings-modal">
@@ -85,19 +155,14 @@
             <button class="close-btn">×</button>
         </div>
         <div class="settings-body">
-            <div class="settings-section">
-                <h4>Account</h4>
-                <div class="account-section">
-                    <div class="account-item">
-                        <span>Nome</span>
-                        <input type="text" id="accountName" placeholder="Nome">
-                    </div>
-                    <div class="account-item">
-                        <span>Email</span>
-                        <input type="email" id="accountEmail" placeholder="Email" readonly>
-                    </div>
-                    <button class="save-account-btn">Salva Account</button>
-                    <button class="logout-btn"><i class="fas fa-sign-out-alt"></i> Esci</button>
+            <div class="account-section">
+                <div class="account-item">
+                    <span>Nome</span>
+                    <input id="accountName" type="text" placeholder="Nome utente">
+                </div>
+                <div class="account-item">
+                    <span>Email</span>
+                    <input id="accountEmail" type="email" placeholder="Email">
                 </div>
             </div>
             <div class="settings-section">
@@ -108,7 +173,7 @@
                 </div>
                 <div class="settings-item">
                     <input type="checkbox" id="darkTheme">
-                    <label for="darkTheme">Tema Scuro</label>
+                    <label for="darkTheme">Tema scuro</label>
                 </div>
                 <div class="settings-item">
                     <input type="checkbox" id="showEmailCount">
@@ -117,7 +182,9 @@
             </div>
         </div>
         <div class="settings-footer">
-            <button class="save-btn"><i class="fas fa-save"></i> Salva</button>
+            <button class="save-btn">Salva</button>
+            <button class="save-account-btn">Salva Account</button>
+            <button class="logout-btn">Logout</button>
         </div>
     </div>
     <div id="eventModal" class="event-modal">
@@ -126,34 +193,30 @@
             <button class="close-btn">×</button>
         </div>
         <div class="event-body">
-            <input type="text" id="eventTitle" placeholder="Titolo evento">
-            <input type="date" id="eventDate">
-            <input type="time" id="eventTime">
+            <input type="text" id="eventTitle" placeholder="Titolo evento" />
+            <input type="date" id="eventDate" />
+            <input type="time" id="eventTime" />
         </div>
         <div class="event-footer">
-            <button class="add-event-btn"><i class="fas fa-plus"></i> Aggiungi</button>
+            <button class="add-event-btn">Aggiungi</button>
         </div>
     </div>
     <div id="emailPreviewModal" class="email-preview-modal">
         <div class="email-preview-header">
-            <h3 id="previewSubject"></h3>
+            <h3>Anteprima Email</h3>
             <button class="close-btn">×</button>
         </div>
         <div class="email-preview-body">
             <p><strong>Da:</strong> <span id="previewSender"></span></p>
             <p><strong>Data:</strong> <span id="previewTime"></span></p>
-            <div id="previewBody" class="email-content"></div>
+            <div id="previewBody"></div>
         </div>
         <div class="email-preview-footer">
-            <button class="delete-btn"><i class="fas fa-trash"></i> Cestino</button>
-            <button class="reply-btn"><i class="fas fa-reply"></i> Rispondi</button>
-            <button class="ai-reply-btn"><i class="fas fa-robot"></i> Rispondi con AI</button>
+            <button class="reply-btn">Rispondi</button>
+            <button class="ai-reply-btn">Rispondi con AI</button>
+            <button class="delete-btn">Elimina</button>
         </div>
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
-    <script>
-        window.sanitizeHtml = (html, options) => DOMPurify.sanitize(html, options);
-    </script>
     <script src="script.js"></script>
 </body>
 
