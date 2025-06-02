@@ -1,16 +1,15 @@
 const navItems = document.querySelectorAll(".email-nav li");
 const emailListContainer = document.querySelector(".email-list-container");
-const emailHeader = document.querySelector(".email-header");
 const calendarSection = document.querySelector("#calendarSection");
-const composeModal = document.querySelector("#composeModal");
-const settingsModal = document.querySelector("#settingsModal");
-const eventModal = document.querySelector("#eventModal");
-const emailPreviewModal = document.querySelector("#emailPreviewModal");
+const composeModal = document.querySelector("#compose-modal");
+const settingsModal = document.querySelector("#settings-modal");
+const eventModal = document.querySelector("#event-modal");
+const emailPreviewModal = document.querySelector("#email-preview-modal");
 const composeBtn = document.querySelector(".compose-btn");
 const settingsBtn = document.querySelector(".settings-btn");
 const syncBtn = document.querySelector(".sync-btn");
 const sendBtn = document.querySelector(".send-btn");
-const overlay = document.querySelector("#overlay");
+const overlay = document.querySelector(".overlay");
 const closeButtons = document.querySelectorAll(".close-btn");
 const saveBtn = document.querySelector(".save-btn");
 const calendarGrid = document.querySelector("#calendarGrid");
@@ -20,20 +19,17 @@ const nextBtn = document.querySelector(".calendar-nav.next");
 const eventsList = document.querySelector("#eventsList");
 const searchInput = document.querySelector("#searchInput");
 const addEventBtn = document.querySelector(".add-event-btn");
-const eventTitleInput = document.querySelector("#eventTitle");
-const eventDateInput = document.querySelector("#eventDate");
-const eventTimeInput = document.querySelector("#eventTime");
+const eventTitleInput = document.querySelector(".event-title");
+const eventDateInput = document.querySelector(".event-datetime");
 const logoutBtn = document.querySelector(".logout-btn");
-const saveAccountBtn = document.querySelector(".save-account-btn");
+const saveAccountBtn = document.querySelector(".save-btn");
 const previewSender = document.querySelector("#previewSender");
-const previewSubject = document.querySelector("#previewSubject");
-const previewBody = document.querySelector("#previewBody");
 const previewTime = document.querySelector("#previewTime");
+const previewBody = document.querySelector("#previewBody");
 const deleteBtn = document.querySelector(".delete-btn");
 const replyBtn = document.querySelector(".reply-btn");
 const aiReplyBtn = document.querySelector(".ai-reply-btn");
-const notificationsCheckbox = document.querySelector("#notifications");
-const darkThemeCheckbox = document.querySelector("#darkTheme");
+const darkThemeCheckbox = document.querySelector("#darkMode");
 const showEmailCountCheckbox = document.querySelector("#showEmailCount");
 const emailCounts = document.querySelectorAll(".email-count");
 const composeInput = document.querySelector(".compose-input");
@@ -51,6 +47,8 @@ const chatSendBtn = document.querySelector(".chat-send-btn");
 const chatClearBtn = document.querySelector(".chat-clear-btn");
 const chatMessages = document.querySelector("#chatMessages");
 const suggestionItems = document.querySelectorAll(".suggestion-item");
+const leftToggle = document.querySelector(".left-toggle");
+const rightToggle = document.querySelector(".right-toggle");
 
 let currentDate = new Date();
 let currentMonth = currentDate.getMonth();
@@ -60,17 +58,18 @@ let events = [];
 let currentEmail = null;
 let emailLimit = 10;
 let currentFilter = { type: "category", value: "" };
-
-// Definizione di tutte le funzioni prima delle chiamate
+let syncInterval = null;
 
 function toggleLoading(show) {
     if (loadingOverlay) {
-        loadingOverlay.style.display = show ? "flex" : "none";
+        loadingOverlay.classList.toggle("active", show);
+        syncBtn.classList.toggle("synchronizing", show);
     }
 }
 
 async function loadEmailsToPage() {
     try {
+        toggleLoading(true);
         const query = `?limit=${emailLimit}`;
         const response = await fetch(`/api/emails${query}`, {
             headers: { Authorization: `Bearer ${sessionStorage.getItem("gt")}`, "Content-Type": "application/json" }
@@ -81,14 +80,15 @@ async function loadEmailsToPage() {
         }
         const emails = await response.json();
         if (!emails || !Array.isArray(emails)) {
-            console.error("Dati email non validi:", emails);
             throw new Error("Dati email non validi");
         }
         await renderEmails(emails);
     } catch (err) {
-        console.error("Errore in loadEmailsToPage:", err);
-        emailListContainer.innerHTML = "<p>Errore nel caricamento delle email. Riprova.</p>";
+        console.error(err);
+        if (emailListContainer) emailListContainer.innerHTML = "<p>Errore nel caricamento delle email. Riprova.</p>";
         throw err;
+    } finally {
+        toggleLoading(false);
     }
 }
 
@@ -125,41 +125,30 @@ async function categorizeEmails() {
         }
         await loadEmailsToPage();
     } catch (err) {
-        console.error("Errore in categorizeEmails:", err);
+        console.error(err);
     }
 }
 
 async function getProfilePicture(emailAddress) {
     try {
-        if (!emailAddress) {
-            console.warn('Email non fornito per getProfilePicture');
-            return '/img/default.jpg';
-        }
+        if (!emailAddress) return '/img/default.jpg';
         const response = await fetch(`/api/user/profile-picture?email=${encodeURIComponent(emailAddress)}`, {
             headers: { Authorization: `Bearer ${sessionStorage.getItem("gt")}`, "Content-Type": "application/json" }
         });
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error(`Errore recupero foto profilo per ${emailAddress}:`, errorData.message);
-            return '/img/default.jpg';
-        }
+        if (!response.ok) return '/img/default.jpg';
         const data = await response.json();
-        if (!data.photoUrl) {
-            console.log(`Nessuna foto profilo disponibile per ${emailAddress}`);
-            return '/img/default.jpg';
-        }
-        return data.photoUrl;
+        return data.photoUrl || '/img/default.jpg';
     } catch (err) {
-        console.error(`Errore recupero foto profilo per ${emailAddress}:`, err.message);
+        console.error(err);
         return '/img/default.jpg';
     }
 }
 
 async function renderEmails(emails) {
     try {
-        emailListContainer.innerHTML = '';
+        if (emailListContainer) emailListContainer.innerHTML = '';
         if (!emails || emails.length === 0) {
-            emailListContainer.innerHTML = "<p>Nessuna email trovata.</p>";
+            if (emailListContainer) emailListContainer.innerHTML = "<p>Nessuna email trovata.</p>";
             return;
         }
         for (const email of emails) {
@@ -170,14 +159,13 @@ async function renderEmails(emails) {
             const previewText = (email.body || "(Nessun contenuto)").substring(0, 50) + (email.body.length > 50 ? '...' : '');
             const subjectText = (email.subject || "(senza oggetto)").substring(0, 25) + (email.subject.length > 25 ? '...' : '');
             const emailDate = new Date(email.date);
-            // Formato uniforme: "DD/MM/YYYY HH:MM"
             const formattedTime = emailDate.toLocaleString('it-IT', {
                 day: '2-digit',
                 month: '2-digit',
                 year: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit'
-            }).replace(',', ''); // Rimuove la virgola tra data e ora
+            }).replace(',', '');
             const emailElement = document.createElement('div');
             emailElement.className = 'email-item';
             emailElement.dataset.id = email.id;
@@ -199,13 +187,13 @@ async function renderEmails(emails) {
                 <div class="email-preview">${previewText}</div>
                 <div class="email-time">${formattedTime}</div>
             `;
-            emailListContainer.appendChild(emailElement);
+            if (emailListContainer) emailListContainer.appendChild(emailElement);
         }
         filterEmails(currentCategory, searchInput.value.toLowerCase(), currentFilter.type, currentFilter.value);
         await attachEmailListeners();
     } catch (err) {
-        console.error("Errore in renderEmails:", err);
-        emailListContainer.innerHTML = "<p>Errore nel rendering delle email.</p>";
+        console.error(err);
+        if (emailListContainer) emailListContainer.innerHTML = "<p>Errore nel rendering delle email.</p>";
     }
 }
 
@@ -214,10 +202,10 @@ function filterEmails(category, searchTerm = "", filterType = "category", filter
         currentCategory = category;
         currentFilter = { type: filterType, value: filterValue };
         navItems.forEach(item => {
-            item.classList.toggle("active", item.getAttribute("data-category") === category && filterType === "category");
+            item.classList.toggle("active", item.getAttribute("data-filter") === category && filterType === "category");
         });
         sidebarItems.forEach(item => {
-            item.classList.toggle("active", item.getAttribute("data-category") === filterValue && filterType === "category");
+            item.classList.toggle("active", item.getAttribute("data-filter") === filterValue && filterType === "category");
         });
         sidebarContacts.forEach(item => {
             item.classList.toggle("active", filterType === "contact" && item.getAttribute("data-email") === filterValue);
@@ -225,8 +213,8 @@ function filterEmails(category, searchTerm = "", filterType = "category", filter
         sidebarFavorites.forEach(item => {
             item.classList.toggle("active", filterType === "favorite" && item.getAttribute("data-email-id") === filterValue);
         });
-        emailListContainer.style.display = category === "calendar" ? "none" : "block";
-        calendarSection.style.display = category === "calendar" ? "block" : "none";
+        if (emailListContainer) emailListContainer.style.display = category === "calendar" ? "none" : "block";
+        if (calendarSection) calendarSection.style.display = category === "calendar" ? "block" : "none";
         if (category !== "calendar") {
             document.querySelectorAll(".email-item").forEach(item => {
                 const categories = item.getAttribute("data-categories").split(" ").filter(c => c);
@@ -260,7 +248,7 @@ function filterEmails(category, searchTerm = "", filterType = "category", filter
         }
         updateEmailCounts();
     } catch (err) {
-        console.error("Errore in filterEmails:", err);
+        console.error(err);
     }
 }
 
@@ -275,7 +263,7 @@ async function loadEvents() {
         }
         events = await response.json();
     } catch (err) {
-        console.error("Errore in loadEvents:", err);
+        console.error(err);
     }
 }
 
@@ -285,12 +273,9 @@ function generateCalendar() {
         const lastDay = new Date(currentYear, currentMonth + 1, 0);
         const daysInMonth = lastDay.getDate();
         const startDay = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
-        const monthNames = [
-            "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
-            "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"
-        ];
-        calendarMonth.textContent = `${monthNames[currentMonth]} ${currentYear}`;
-        calendarGrid.innerHTML = `
+        const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
+        if (calendarMonth) calendarMonth.textContent = `${monthNames[currentMonth]} ${currentYear}`;
+        if (calendarGrid) calendarGrid.innerHTML = `
             <div class="calendar-day">Lun</div>
             <div class="calendar-day">Mar</div>
             <div class="calendar-day">Mer</div>
@@ -302,7 +287,7 @@ function generateCalendar() {
         for (let i = 0; i < startDay; i++) {
             const emptyDay = document.createElement("div");
             emptyDay.className = "calendar-date empty";
-            calendarGrid.appendChild(emptyDay);
+            if (calendarGrid) calendarGrid.appendChild(emptyDay);
         }
         for (let i = 1; i <= daysInMonth; i++) {
             const date = new Date(currentYear, currentMonth, i);
@@ -312,19 +297,19 @@ function generateCalendar() {
             dayElement.className = `calendar-date ${isToday ? "today" : ""} ${hasEvent ? "event" : ""}`;
             dayElement.textContent = i;
             dayElement.addEventListener("click", () => {
-                eventDateInput.value = date.toISOString().split("T")[0];
+                if (eventDateInput) eventDateInput.value = date.toISOString().slice(0, 16);
                 toggleModal(eventModal, true);
             });
-            calendarGrid.appendChild(dayElement);
+            if (calendarGrid) calendarGrid.appendChild(dayElement);
         }
         const totalCells = startDay + daysInMonth;
         const remainingCells = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
         for (let i = 0; i < remainingCells; i++) {
             const emptyDay = document.createElement("div");
             emptyDay.className = "calendar-date empty";
-            calendarGrid.appendChild(emptyDay);
+            if (calendarGrid) calendarGrid.appendChild(emptyDay);
         }
-        eventsList.innerHTML = "<h3>Eventi</h3>";
+        if (eventsList) eventsList.innerHTML = "<h3>Eventi</h3>";
         events.forEach(event => {
             const eventItem = document.createElement("div");
             eventItem.className = "event-item";
@@ -333,8 +318,9 @@ function generateCalendar() {
                 <span>${event.title} - ${new Date(event.date).toLocaleDateString('it-IT')} ${event.time}</span>
                 <button class="delete-event-btn"><i class="fas fa-trash"></i> Elimina</button>
             `;
-            eventsList.appendChild(eventItem);
-            eventItem.querySelector(".delete-event-btn").addEventListener("click", async () => {
+            if (eventsList) eventsList.appendChild(eventItem);
+            const deleteBtn = eventItem.querySelector(".delete-event-btn");
+            if (deleteBtn) deleteBtn.addEventListener("click", async () => {
                 try {
                     const response = await fetch(`/api/events/${event._id}`, {
                         method: "DELETE",
@@ -348,30 +334,32 @@ function generateCalendar() {
                     generateCalendar();
                     alert("Evento eliminato!");
                 } catch (err) {
-                    console.error("Errore eliminazione evento:", err);
-                    alert("Errore eliminazione evento: " + err.message);
+                    console.error(err);
+                    alert(err.message);
                 }
             });
         });
     } catch (err) {
-        console.error("Errore in generateCalendar:", err);
-        eventsList.innerHTML = "<p>Errore nel rendering del calendario.</p>";
+        console.error(err);
+        if (eventsList) eventsList.innerHTML = "<p>Errore nel rendering del calendario.</p>";
     }
 }
 
 function toggleModal(modal, show) {
     try {
-        if (modal) {
+        if (modal && overlay) {
             modal.classList.toggle("active", show);
             overlay.classList.toggle("active", show);
+            document.body.style.overflow = show ? 'hidden' : '';
         }
     } catch (err) {
-        console.error("Errore in toggleModal:", err);
+        console.error(err);
     }
 }
 
 async function syncEmails() {
     try {
+        toggleLoading(true);
         const response = await fetch("/api/emails/sync", {
             method: "POST",
             headers: { Authorization: `Bearer ${sessionStorage.getItem("gt")}`, "Content-Type": "application/json" }
@@ -382,8 +370,10 @@ async function syncEmails() {
         }
         return await response.json();
     } catch (err) {
-        console.error("Errore in syncEmails:", err);
+        console.error(err);
         throw err;
+    } finally {
+        toggleLoading(false);
     }
 }
 
@@ -400,7 +390,7 @@ async function sendEmail(to, subject, body) {
         }
         return await response.json();
     } catch (err) {
-        console.error("Errore in sendEmail:", err);
+        console.error(err);
         throw err;
     }
 }
@@ -418,7 +408,7 @@ async function trashEmail(emailId) {
         }
         return await response.json();
     } catch (err) {
-        console.error("Errore in trashEmail:", err);
+        console.error(err);
         throw err;
     }
 }
@@ -430,7 +420,7 @@ async function attachEmailListeners() {
             item.addEventListener('click', handleEmailClick);
         });
     } catch (err) {
-        console.error("Errore in attachEmailListeners:", err);
+        console.error(err);
     }
 }
 
@@ -439,15 +429,13 @@ function sanitizeContent(content) {
         if (typeof sanitizeHtml !== 'undefined') {
             return sanitizeHtml(content, {
                 allowedTags: ['p', 'br', 'strong', 'em', 'a', 'ul', 'li', 'div'],
-                allowedAttributes: {
-                    'a': ['href', 'target', 'rel']
-                }
+                allowedAttributes: { 'a': ['href', 'target', 'rel'] }
             });
         }
         return content.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
             .replace(/<[^>]+>/g, '');
     } catch (err) {
-        console.error("Errore sanitizzazione:", err);
+        console.error(err);
         return content;
     }
 }
@@ -488,88 +476,90 @@ async function handleEmailClick(event) {
                 try {
                     const response = await fetch(attachmentUrl, {
                         method: 'HEAD',
-                        headers: { Authorization: `Bearer ${sessionStorage.getItem("gt")}` }
+                        headers: { Authorization: `Bearer ${ sessionStorage.getItem("gt") }` }
                     });
                     if (!response.ok) {
                         attachmentsHtml += `
-                            <div class="attachment-item">
-                                <img src="${iconPath}" alt="${extension} icon" class="attachment-img" onerror="this.src='/img/extensions/default.svg'">
-                                <span>${attachment.filename} (Non disponibile)</span>
-                            </div>
+                    < div class= "attachment-item" >
+                    <img src="${iconPath}" alt="${extension} icon" class="attachment-img" onerror="this.src='/img/extensions/default.svg'">
+                        <span>${attachment.filename} (Non disponibile)</span>
+                    </div>
                         `;
                         continue;
                     }
                 } catch (err) {
                     attachmentsHtml += `
-                        <div class="attachment-item">
-                            <img src="${iconPath}" alt="${extension} icon" class="attachment-icon" onerror="this.src='/img/extensions/default.svg'">
+                        < div class= "attachment-item" >
+                        <img src="${iconPath}" alt="${extension} icon" class="attachment-icon" onerror="this.src='/img/extensions/default.svg'">
                             <span>${attachment.filename} (Errore)</span>
                         </div>
                     `;
                     continue;
                 }
                 attachmentsHtml += `
-                    <div class="attachment-item">
-                        ${isImage ? `<img src="${attachmentUrl}" alt="${attachment.filename}" class="attachment-preview-img">` : ''}
+                        < div class= "attachment-item" >
+                        ${ isImage? `<img src="${attachmentUrl}" alt="${attachment.filename}" class="attachment-preview-img">` : ''}
                         <div class="attachment-info">
-                            <img src="${iconPath}" alt="${extension} icon" class="attachment-icon" onerror="this.src='/img/extensions/default.svg'">
-                            <a href="${attachmentUrl}" download="${attachment.filename}">
-                                ${attachment.filename} (${attachment.size ? (attachment.size / 1024).toFixed(2) : '0'} KB)
-                            </a>
-                            ${isImage ? `<button class="view-attachment-btn" data-attachment-url="${attachmentUrl}">Visualizza</button>` : ''}
-                        </div>
-                    </div>
-                `;
+                    <img src="${iconPath}" alt="${extension} icon" class="attachment-icon" onerror="this.src='/img/extensions/default.svg'">
+                        <a href="${attachmentUrl}" download="${attachment.filename}">
+                            ${attachment.filename} (${attachment.size ? (attachment.size / 1024).toFixed(2) : '0'} KB)
+                        </a>
+                        ${isImage ? `<button class="view-attachment-btn" data-attachment-url="${attachmentUrl}">Visualizza</button>` : ''}
+                </div>
+                    </div >
+                    `;
             }
             attachmentsHtml += '</div>';
         }
-        const previewHeader = emailPreviewModal.querySelector('.email-preview-header h3');
-        previewHeader.textContent = subject.substring(0, 50) + (subject.length > 50 ? '...' : '');
-        previewSender.textContent = sender;
-        previewTime.textContent = time ? new Date(time).toLocaleString('it-IT', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        }) : 'N/D';
-        previewBody.innerHTML = `
-            <div class="email-content-body">${sanitizedMainContent || "<p>(Nessun contenuto)</p>"}</div>
-            ${sanitizedFooterContent ? `<div class="email-footer">${sanitizedFooterContent}</div>` : ''}
-            ${attachmentsHtml}
-        `;
-        toggleModal(emailPreviewModal, true);
-        document.querySelectorAll('.view-attachment-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const attachmentUrl = btn.getAttribute("data-attachment-url");
-                try {
-                    window.open(attachmentUrl, '_blank');
-                } catch (err) {
-                    console.error('Errore apertura allegato:', err);
-                    alert('Impossibile aprire allegato. Riprova o contatta il supporto.');
-                }
-            });
-        });
-    } catch (err) {
-        console.error("Errore in handleEmailClick:", err);
-        alert("Errore durante l'apertura dell'email: " + err.message);
+        if (emailPreviewModal) {
+            const previewHeader = emailPreviewModal.querySelector('.email-preview-header h3');
+            if (previewHeader) previewHeader.textContent = subject.substring(0, 50) + (subject.length > 50 ? '...' : '');
+            if (previewSender) previewSender.textContent = sender;
+            if (previewTime) previewTime.textContent = time ? new Date(time).toLocaleString('it-IT', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+            }) : 'N/D';
+            if (previewBody) previewBody.innerHTML = `
+                    < div class="email-content-body" > ${ sanitizedMainContent || "<p>(Nessun contenuto)</p>" };</div >
+                        ${ sanitizedFooterContent ? `<div class="email-footer">${sanitizedFooterContent}</div>` : '' }
+                ${ attachmentsHtml } `
+            ;
+                toggleModal(emailPreviewModal, true);
+                document.querySelectorAll('.view-attachment-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const attachmentUrl = btn.getAttribute("data-attachment-url");
+                        try {
+                            window.open(attachmentUrl, '_blank');
+                        } catch (err) {
+                            console.error(err);
+                            alert('Impossibile aprire allegato. Riprova o contatta il supporto.');
+                        }
+                    });
+                });
+            }
+        } catch (err) {
+            console.error(err);
+            alert(err.message);
+        }
     }
-}
 
 function toggleEmailCountVisibility(show) {
     try {
         emailCounts.forEach(count => {
-            count.style.display = show ? "inline-block" : "none";
+            count.show.style.display = show ? 'inline-block' : 'none';
         });
     } catch (err) {
-        console.error("Errore in toggleEmailCountVisibility: ", err);
+        console.error(err);
     }
 }
 
 function updateEmailCounts() {
     try {
         navItems.forEach(item => {
-            const category = item.getAttribute("data-category");
+            const category = item.getAttribute("data-filter");
             let count = 0;
             if (category === "inbox") {
                 count = document.querySelectorAll('.email-item').length;
@@ -577,23 +567,23 @@ function updateEmailCounts() {
                 count = events.length;
             } else {
                 const categoryMap = {
-                    sent: 'Inviate',
-                    important: 'Importanti',
+                    sent: 'Inviata',
+                    important: 'Importante',
                     meetings: 'Riunioni',
                     spam: 'Spam',
                     trash: 'Cestino',
                     promotions: 'Promozioni',
-                    toreply: 'Da rispondere',
-                    draft: 'Bozze'
+                    toReply: 'Da rispondere',
+                    draft: 'Bozze',
                 };
                 const mappedCategory = categoryMap[category] || category;
-                count = document.querySelectorAll(`.email-item[data-categories~="${mappedCategory}"]`).length;
+                count = document.querySelectorAll(`.email-item[data-categories="${mappedCategory}"]`).length;
             }
             const countElement = item.querySelector(".email-count");
             if (countElement) countElement.textContent = count;
         });
     } catch (err) {
-        console.error("Errore in updateEmailCounts:", err);
+        console.error(err);
     }
 }
 
@@ -604,102 +594,187 @@ function attachNavListeners() {
             item.addEventListener('click', handleNavClick);
         });
     } catch (err) {
-        console.error("Errore in attachNavListeners:", err);
+        console.error(err);
     }
 }
 
 function handleNavClick(event) {
     try {
-        const category = event.currentTarget.getAttribute("data-category");
+        const category = event.currentTarget.getAttribute("data-filter");
         filterEmails(category, searchInput.value.toLowerCase(), "category", "");
+        toggleModal(emailPreviewModal, false);
     } catch (err) {
-        console.error("Errore cambio categoria:", err);
+        console.error(err);
+        alert(err.message);
     }
 }
 
 function attachSidebarListeners() {
     try {
         sidebarItems.forEach(item => {
-            item.addEventListener("click", () => {
-                const category = item.getAttribute("data-category");
-                filterEmails("inbox", searchInput.value.toLowerCase(), "category", category);
-            });
+            item.removeEventListener("click", handleSidebarClick);
+            item.addEventListener("click", handleSidebarClick);
         });
         sidebarContacts.forEach(item => {
-            item.addEventListener("click", () => {
-                const email = item.getAttribute("data-email");
-                filterEmails("inbox", searchInput.value.toLowerCase(), "contact", email);
-            });
+            item.removeEventListener("click", handleSidebarContactClick);
+            item.addEventListener("click", handleSidebarContactClick);
         });
         sidebarFavorites.forEach(item => {
-            item.addEventListener("click", () => {
-                const emailId = item.getAttribute("data-email-id");
-                filterEmails("inbox", searchInput.value.toLowerCase(), "favorite", emailId);
-            });
+            item.removeEventListener("click", handleSidebarFavoriteClick);
+            item.addEventListener("click", handleSidebarFavoriteClick);
         });
     } catch (err) {
-        console.error("Errore in attachSidebarListeners:", err);
+        console.error(err);
+    }
+}
+
+function handleSidebarClick(event) {
+    try {
+        const category = event.currentTarget.getAttribute("data-filter");
+        filterEmails("inbox", searchInput.value.toLowerCase(), "category", category);
+        toggleModal(emailPreviewModal, false);
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+function handleSidebarContactClick(event) {
+    try {
+        const email = event.currentTarget.getAttribute("data-email");
+        filterEmails("inbox", searchInput.value.toLowerCase(), "contact", email);
+        toggleModal(emailPreviewModal, false);
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+function handleSidebarFavoriteClick(event) {
+    try {
+        const emailId = event.currentTarget.getAttribute("data-email-id");
+        filterEmails("inbox", searchInput.value.toLowerCase(), "favorite", emailId);
+        toggleModal(emailPreviewModal, false);
+    } catch (err) {
+        console.error(err);
     }
 }
 
 function attachChatListeners() {
     try {
-        chatSendBtn.addEventListener("click", () => {
-            const message = chatInput.value.trim();
-            if (message) {
-                const messageElement = document.createElement("div");
-                messageElement.className = "chat-message user";
-                messageElement.textContent = message;
-                chatMessages.appendChild(messageElement);
-                chatInput.value = "";
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-                setTimeout(() => {
-                    const botResponse = document.createElement("div");
-                    botResponse.className = "chat-message bot";
-                    botResponse.textContent = "Grazie per il messaggio! Come posso aiutarti ulteriormente?";
-                    chatMessages.appendChild(botResponse);
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                }, 500);
-            }
-        });
-        chatClearBtn.addEventListener("click", () => {
-            chatMessages.innerHTML = '<div class="chat-message bot">Ciao! Come posso aiutarti oggi?</div>';
-            chatInput.value = "";
-        });
+        if (chatSendBtn) {
+            chatSendBtn.removeEventListener("click", handleChatSend);
+            chatSendBtn.addEventListener("click", handleChatSend);
+        }
+        if (chatClearBtn) {
+            chatClearBtn.removeEventListener("click", handleChatClear);
+            chatClearBtn.addEventListener("click", handleChatClear);
+        }
         suggestionItems.forEach(item => {
-            item.addEventListener("click", () => {
-                chatInput.value = item.textContent;
-                chatInput.focus();
-            });
+            item.removeEventListener("click", handleSuggestionClick);
+            item.addEventListener("click", handleSuggestionClick);
         });
     } catch (err) {
-        console.error("Errore in attachChatListeners:", err);
+        console.error(err);
     }
 }
 
-// Inizializzazione della pagina
+function handleChatSend() {
+    try {
+        const message = chatInput.value.trim();
+        if (message && chatMessages) {
+            const messageElement = document.createElement("div");
+            messageElement.className = "chat-message user";
+            messageElement.textContent = message;
+            chatMessages.appendChild(messageElement);
+            chatInput.value = "";
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            setTimeout(() => {
+                const botResponse = document.createElement("div");
+                botResponse.className = "chat-message bot";
+                botResponse.textContent = "Grazie per il messaggio! Come posso aiutarti ulteriormente?";
+                chatMessages.appendChild(botResponse);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 500);
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+function handleChatClear() {
+    try {
+        if (chatMessages) chatMessages.innerHTML = '<div class="chat-message bot">Ciao! Come posso aiutarti oggi?</div>';
+        if (chatInput) chatInput.value = "";
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+function handleSuggestionClick(event) {
+    try {
+        if (chatInput) chatInput.value = event.currentTarget.textContent;
+        if (chatInput) chatInput.focus();
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+function attachSidebarToggleListeners() {
+    try {
+        if (leftToggle) leftToggle.addEventListener("click", () => {
+            document.querySelector('.left-rectangle').classList.toggle('active');
+            overlay.classList.toggle('active');
+            document.querySelector('.right-rectangle').classList.remove('active');
+        });
+        if (rightToggle) rightToggle.addEventListener("click", () => {
+            document.querySelector('.right-rectangle').classList.toggle('active');
+            overlay.classList.toggle('active');
+            document.querySelector('.left-rectangle').classList.remove('active');
+        });
+        if (overlay) overlay.addEventListener('click', () => {
+            document.querySelector('.left-rectangle').classList.remove('active');
+            document.querySelector('.right-rectangle').classList.remove('active');
+            overlay.classList.remove('active');
+            toggleModal(emailPreviewModal, false);
+            toggleModal(composeModal, false);
+            toggleModal(settingsModal, false);
+            toggleModal(eventModal, false);
+        });
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return function (args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
     try {
         toggleLoading(true);
+        toggleModal(emailPreviewModal, false);
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get("token");
         const error = urlParams.get("error");
         if (error) {
             let errorMessage = "Errore durante il login. Riprova.";
-            if (error === "auth_required") {
-                errorMessage = "Autenticazione richiesta. Effettua il login.";
-            } else if (error === "auth_failed") {
-                errorMessage = "Autenticazione fallita. Verifica le credenziali e riprova.";
-            } else if (error === "init_failed") {
-                errorMessage = "Errore di inizializzazione. Riprova più tardi.";
-            }
+            if (error === "auth_required") errorMessage = "Autenticazione richiesta. Effettua il login.";
+            else if (error === "auth_failed") errorMessage = "Autenticazione fallita. Verifica le credenziali.";
+            else if (error === "init_failed") errorMessage = "Errore di inizializzazione. Riprova più tardi.";
             alert(errorMessage);
             window.location.href = "/";
             return;
         }
         if (token) {
             sessionStorage.setItem("gt", token);
-            window.history.replaceState({}, document.title, window.location.pathname);
+            window.history.replaceState({}, "", window.location.pathname);
         }
         const storedToken = sessionStorage.getItem("gt");
         let user = {};
@@ -709,7 +784,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             user = {};
         }
         if (!storedToken) {
-            alert("Sessione scaduta. Effettua nuovamente il login.");
+            alert("Sessione regolare. Effettua nuovamente il login.");
             window.location.href = "/?error=auth_required";
             return;
         }
@@ -726,26 +801,28 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         if (accountNameInput && accountEmailInput) {
             accountNameInput.value = user.name || "";
-            accountEmailInput.value = user.email;
-        } else {
-            console.warn("Input elements #accountName or #accountEmail not found in DOM");
+            accountEmailInput.value = user.email || "";
         }
         await loadEmailsToPage();
         await categorizeEmails();
         updateEmailCounts();
-        showEmailCountCheckbox.checked = true;
-        toggleEmailCountVisibility(true);
+        if (showEmailCountCheckbox) {
+            showEmailCountCheckbox.checked = true;
+            toggleEmailCountVisibility(true);
+        }
         filterEmails("inbox");
         await loadEvents();
         generateCalendar();
-        if (localStorage.getItem("darkTheme") === "true") {
+        if (localStorage.getItem("darkTheme") === "true" && darkThemeCheckbox) {
             darkThemeCheckbox.checked = true;
             document.body.classList.add("dark");
         }
         attachSidebarListeners();
         attachChatListeners();
         attachNavListeners();
-        setInterval(async () => {
+        attachSidebarToggleListeners();
+        clearInterval(syncInterval);
+        syncInterval = setInterval(async () => {
             try {
                 await syncEmails();
                 await loadEmailsToPage();
@@ -753,83 +830,82 @@ document.addEventListener("DOMContentLoaded", async () => {
                 updateEmailCounts();
                 filterEmails(currentCategory, searchInput.value.toLowerCase(), currentFilter.type, currentFilter.value);
             } catch (err) {
-                console.error("Errore sincronizzazione automatica:", err);
+                console.error(err);
             }
         }, 5 * 60 * 1000);
     } catch (err) {
-        console.error("Errore inizializzazione:", err);
-        alert("Errore inizializzazione: " + err.message);
+        console.error(err);
+        alert(err.message);
     } finally {
         toggleLoading(false);
     }
 });
 
-// Gestione degli eventi dei pulsanti
-emailLimitSelect.addEventListener("change", async () => {
+if (emailLimitSelect) emailLimitSelect.addEventListener("change", async () => {
     try {
         emailLimit = parseInt(emailLimitSelect.value);
         await loadEmailsToPage();
         await categorizeEmails();
         filterEmails(currentCategory, searchInput.value.toLowerCase(), currentFilter.type, currentFilter.value);
     } catch (err) {
-        console.error("Errore cambio limite email:", err);
-        alert("Errore cambio limite email: " + err.message);
+        console.error(err);
+        alert(err.message);
     }
 });
 
-searchInput.addEventListener("input", () => {
-    try {
-        filterEmails(currentCategory, searchInput.value.toLowerCase(), currentFilter.type, currentFilter.value);
-    } catch (err) {
-        console.error("Errore ricerca:", err);
-    }
-});
+const debouncedSearch = debounce(() => {
+    filterEmails(currentCategory, searchInput.value.toLowerCase(), currentFilter.type, currentFilter.value);
+}, 300);
+
+if (searchInput) searchInput.addEventListener("input", debouncedSearch);
 
 [composeBtn, settingsBtn].forEach(btn => {
-    btn.addEventListener("click", () => {
+    if (btn) btn.addEventListener("click", () => {
         try {
-            toggleModal(btn === composeBtn ? composeModal : settingsModal, true);
+            toggleModal(btn === composeBtn ? settingsModal : composeModal, true);
         } catch (err) {
-            console.error("Errore apertura modale:", err);
+            console.error(err);
         }
     });
 });
 
 closeButtons.forEach(btn => {
-    btn.addEventListener("click", () => {
+    if (btn) btn.addEventListener("click", () => {
         try {
             [composeModal, settingsModal, eventModal, emailPreviewModal].forEach(modal => {
                 toggleModal(modal, false);
             });
         } catch (err) {
-            console.error("Errore chiusura modale:", err);
+            console.error(err);
         }
     });
 });
 
-saveBtn.addEventListener("click", () => {
+if (saveBtn) saveBtn.addEventListener("click", () => {
     try {
         localStorage.setItem("darkTheme", darkThemeCheckbox.checked);
         toggleModal(settingsModal, false);
     } catch (err) {
-        console.error("Errore salvataggio impostazioni:", err);
+        console.error(err);
+        alert(err.message);
     }
 });
 
-logoutBtn.addEventListener("click", () => {
+if (logoutBtn) logoutBtn.addEventListener("click", () => {
     try {
         sessionStorage.removeItem("gt");
         localStorage.removeItem("user");
         window.location.href = "/";
     } catch (err) {
-        console.error("Errore logout:", err);
+        console.error(err);
+        alert(err.message);
     }
 });
 
-saveAccountBtn.addEventListener("click", async () => {
+if (saveAccountBtn) saveAccountBtn.addEventListener("click", async () => {
     try {
         if (!accountNameInput || !accountEmailInput) {
-            throw new Error("Input elements for account non trovati");
+            throw new Error("Input elementi per account non trovati");
         }
         const name = accountNameInput.value.trim();
         const email = accountEmailInput.value.trim();
@@ -842,20 +918,20 @@ saveAccountBtn.addEventListener("click", async () => {
         alert("Dati account aggiornati!");
         toggleModal(settingsModal, false);
     } catch (err) {
-        console.error("Errore salvataggio account:", err);
-        alert("Errore salvataggio account: " + err.message);
+        console.error(err);
+        alert(err.message);
     }
 });
 
-addEventBtn.addEventListener("click", async () => {
+if (addEventBtn) addEventBtn.addEventListener("click", async () => {
     try {
         const title = eventTitleInput.value.trim();
-        const date = eventDateInput.value;
-        const time = eventTimeInput.value;
-        if (!title || !date || !time) {
+        const dateTime = eventDateInput.value;
+        if (!title || !dateTime) {
             alert("Compila tutti i campi!");
             return;
         }
+        const [date, time] = dateTime.split("T");
         const response = await fetch("/api/events", {
             method: "POST",
             headers: { Authorization: `Bearer ${sessionStorage.getItem("gt")}`, "Content-Type": "application/json" },
@@ -870,34 +946,35 @@ addEventBtn.addEventListener("click", async () => {
         generateCalendar();
         toggleModal(eventModal, false);
         alert("Evento aggiunto!");
-        eventTitleInput.value = "";
-        eventDateInput.value = "";
-        eventTimeInput.value = "";
+        if (eventTitleInput) eventTitleInput.value = "";
+        if (eventDateInput) eventDateInput.value = "";
     } catch (err) {
-        console.error("Errore aggiunta evento:", err);
-        alert("Errore aggiunta evento: " + err.message);
+        console.error(err);
+        alert(err.message);
     }
 });
 
-darkThemeCheckbox.addEventListener("change", () => {
+if (darkThemeCheckbox) darkThemeCheckbox.addEventListener("change", () => {
     try {
         document.body.classList.toggle("dark", darkThemeCheckbox.checked);
         localStorage.setItem("darkTheme", darkThemeCheckbox.checked);
     } catch (err) {
-        console.error("Errore cambio tema:", err);
+        console.error(err);
+        alert(err.message);
     }
 });
 
-showEmailCountCheckbox.addEventListener("change", () => {
+if (showEmailCountCheckbox) showEmailCountCheckbox.addEventListener("change", () => {
     try {
         toggleEmailCountVisibility(showEmailCountCheckbox.checked);
     } catch (err) {
-        console.error("Errore toggleEmailCountCheckbox:", err);
+        console.error(err);
+        alert(err.message);
     }
 });
 
 [prevBtn, nextBtn].forEach(btn => {
-    btn.addEventListener("click", () => {
+    if (btn) btn.addEventListener("click", () => {
         try {
             if (btn.classList.contains("prev")) {
                 currentMonth--;
@@ -914,12 +991,13 @@ showEmailCountCheckbox.addEventListener("change", () => {
             }
             generateCalendar();
         } catch (err) {
-            console.error("Errore cambio mese calendario:", err);
+            console.error(err);
+            alert(err.message);
         }
     });
 });
 
-sendBtn.addEventListener("click", async () => {
+if (sendBtn) sendBtn.addEventListener("click", async () => {
     try {
         const to = composeInput.value.trim();
         const subject = composeSubject.value.trim();
@@ -937,12 +1015,12 @@ sendBtn.addEventListener("click", async () => {
         await loadEmailsToPage();
         filterEmails(currentCategory, searchInput.value.toLowerCase(), currentFilter.type, currentFilter.value);
     } catch (err) {
-        console.error("Errore invio email:", err);
-        alert("Errore invio email: " + err.message);
+        console.error(err);
+        alert(err.message);
     }
 });
 
-deleteBtn.addEventListener("click", async () => {
+if (deleteBtn) deleteBtn.addEventListener("click", async () => {
     try {
         if (!currentEmail) {
             alert("Nessuna email selezionata!");
@@ -952,15 +1030,16 @@ deleteBtn.addEventListener("click", async () => {
         await trashEmail(emailId);
         alert("Email spostata nel cestino!");
         toggleModal(emailPreviewModal, false);
+        currentEmail = null;
         await loadEmailsToPage();
         filterEmails(currentCategory, searchInput.value.toLowerCase(), currentFilter.type, currentFilter.value);
     } catch (err) {
-        console.error("Errore eliminazione email:", err);
-        alert("Errore spostamento email nel cestino: " + err.message);
+        console.error(err);
+        alert(err.message);
     }
 });
 
-replyBtn.addEventListener("click", () => {
+if (replyBtn) replyBtn.addEventListener("click", () => {
     try {
         if (!currentEmail) {
             alert("Nessuna email selezionata!");
@@ -974,18 +1053,18 @@ replyBtn.addEventListener("click", () => {
         toggleModal(emailPreviewModal, false);
         toggleModal(composeModal, true);
     } catch (err) {
-        console.error("Errore risposta email:", err);
-        alert("Errore apertura risposta: " + err.message);
+        console.error(err);
+        alert(err.message);
     }
 });
 
-aiReplyBtn.addEventListener("click", async () => {
+if (aiReplyBtn) aiReplyBtn.addEventListener("click", async () => {
     try {
         if (!currentEmail) {
             alert("Nessuna email selezionata!");
             return;
         }
-        const emailId = currentEmail.getAttribute("data-id");
+        const emailId = currentEmail.getAttribute("id");
         const response = await fetch(`/api/emails/${emailId}/ai-reply`, {
             method: "POST",
             headers: { Authorization: `Bearer ${sessionStorage.getItem("gt")}`, "Content-Type": "application/json" }
@@ -997,18 +1076,18 @@ aiReplyBtn.addEventListener("click", async () => {
         const aiReply = await response.json();
         composeInput.value = currentEmail.getAttribute("data-sender");
         composeSubject.value = `Re: ${currentEmail.getAttribute("data-subject")}`;
-        composeText.value = aiReply.message || "Risposta generata dall'AI.";
+        composeText.value = aiReply.message || "";
         toggleModal(emailPreviewModal, false);
         toggleModal(composeModal, true);
     } catch (err) {
-        console.error("Errore risposta AI:", err);
-        alert("Errore generazione risposta AI: " + err.message);
+        console.error(err);
+        alert(err.message);
     }
 });
 
-syncBtn.addEventListener("click", async () => {
+if (syncBtn) syncBtn.addEventListener("click", async () => {
     try {
-        toggleLoading(true);
+        toggleModal(emailPreviewModal, false);
         await syncEmails();
         await loadEmailsToPage();
         await categorizeEmails();
@@ -1016,9 +1095,7 @@ syncBtn.addEventListener("click", async () => {
         filterEmails(currentCategory, searchInput.value.toLowerCase(), currentFilter.type, currentFilter.value);
         alert("Email sincronizzate!");
     } catch (err) {
-        console.error("Errore sincronizzazione manuale:", err);
-        alert("Errore sincronizzazione email: " + err.message);
-    } finally {
-        toggleLoading(false);
+        console.error(err);
+        alert(err.message);
     }
 });
