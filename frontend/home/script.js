@@ -70,22 +70,27 @@ function toggleLoading(show) {
 async function loadEmailsToPage() {
     try {
         toggleLoading(true);
+        console.log("Caricamento email con limite:", emailLimit);
         const query = `?limit=${emailLimit}`;
         const response = await fetch(`/api/emails${query}`, {
             headers: { Authorization: `Bearer ${sessionStorage.getItem("gt")}`, "Content-Type": "application/json" }
         });
+        console.log("Risposta API:", response.status, response.statusText);
         if (!response.ok) {
             const errorData = await response.json();
+            console.error("Errore API:", errorData);
             throw new Error(errorData.message || "Errore caricamento email");
         }
         const emails = await response.json();
+        console.log("Email ricevute:", emails);
         if (!emails || !Array.isArray(emails)) {
+            console.error("Dati email non validi:", emails);
             throw new Error("Dati email non validi");
         }
         await renderEmails(emails);
     } catch (err) {
-        console.error(err);
-        if (emailListContainer) emailListContainer.innerHTML = "<p>Errore nel caricamento delle email. Riprova.</p>";
+        console.error("Errore in loadEmailsToPage:", err);
+        if (emailListContainer) emailListContainer.innerHTML = `<p>Errore nel caricamento delle email: ${err.message}. Riprova.</p>`;
         throw err;
     } finally {
         toggleLoading(false);
@@ -148,28 +153,37 @@ async function renderEmails(emails) {
     try {
         if (emailListContainer) emailListContainer.innerHTML = '';
         if (!emails || emails.length === 0) {
+            console.log("Nessuna email da visualizzare");
             if (emailListContainer) emailListContainer.innerHTML = "<p>Nessuna email trovata.</p>";
             return;
         }
         for (const email of emails) {
-            const label = email.categories && email.categories.length > 0 ? email.categories[0] : 'Tutte le email';
+            if (!email.id) {
+                console.warn("Email senza ID:", email);
+                continue;
+            }
+            const label = email.categories && Array.isArray(email.categories) && email.categories.length > 0 ? email.categories[0] : 'Posta in arrivo';
             const bgColor = email.backgroundColor || '#2563eb';
             const textColor = email.textColor || '#ffffff';
-            const profilePicture = await getProfilePicture(email.from);
-            const previewText = (email.body || "(Nessun contenuto)").substring(0, 50) + (email.body.length > 50 ? '...' : '');
-            const subjectText = (email.subject || "(senza oggetto)").substring(0, 25) + (email.subject.length > 25 ? '...' : '');
-            const emailDate = new Date(email.date);
-            const formattedTime = emailDate.toLocaleString('it-IT', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            }).replace(',', '');
+            const profilePicture = await getProfilePicture(email.from || '');
+            // MODIFICA: Gestione del corpo vuoto e troncamento a 18 caratteri
+            let previewText = email.body ? email.body.slice(0, 18) : "(Nessun contenuto)";
+            if (previewText.length < 18) {
+                previewText = previewText.padEnd(18, ' '); // Padding con spazi per garantire 18 caratteri
+            } else if (email.body && email.body.length > 18) {
+                previewText = previewText + '...';
+            }
+            const subjectText = (email.subject || "(senza oggetto)").slice(0, 25) + (email.subject && email.subject.length > 25 ? '...' : '');
+            const emailDate = email.date ? new Date(email.date) : new Date();
+            const today = new Date();
+            const isToday = emailDate.toDateString() === today.toDateString();
+            const formattedTime = isToday
+                ? emailDate.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+                : emailDate.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
             const emailElement = document.createElement('div');
             emailElement.className = 'email-item';
             emailElement.dataset.id = email.id;
-            emailElement.dataset.categories = email.categories ? email.categories.join(" ") : "";
+            emailElement.dataset.categories = email.categories && Array.isArray(email.categories) ? email.categories.join(" ") : "";
             emailElement.dataset.sender = email.from || "Sconosciuto";
             emailElement.dataset.subject = email.subject || "(senza oggetto)";
             emailElement.dataset.body = email.body || "";
@@ -189,11 +203,12 @@ async function renderEmails(emails) {
             `;
             if (emailListContainer) emailListContainer.appendChild(emailElement);
         }
+        console.log("Email renderizzate:", emails.length);
         filterEmails(currentCategory, searchInput.value.toLowerCase(), currentFilter.type, currentFilter.value);
         await attachEmailListeners();
     } catch (err) {
-        console.error(err);
-        if (emailListContainer) emailListContainer.innerHTML = "<p>Errore nel rendering delle email.</p>";
+        console.error("Errore in renderEmails:", err);
+        if (emailListContainer) emailListContainer.innerHTML = `<p>Errore nel rendering delle email: ${err.message}.</p>`;
     }
 }
 
@@ -219,7 +234,7 @@ function filterEmails(category, searchTerm = "", filterType = "category", filter
             document.querySelectorAll(".email-item").forEach(item => {
                 const categories = item.getAttribute("data-categories").split(" ").filter(c => c);
                 const categoryMap = {
-                    inbox: 'Tutte le email',
+                    inbox: 'Posta in arrivo',
                     sent: 'Inviate',
                     important: 'Importanti',
                     meetings: 'Riunioni',
@@ -233,9 +248,9 @@ function filterEmails(category, searchTerm = "", filterType = "category", filter
                 const mappedCategory = categoryMap[category] || category;
                 let matchesFilter = false;
                 if (filterType === "category") {
-                    matchesFilter = category === "inbox" || categories.includes(mappedCategory);
+                    matchesFilter = category === "inbox" ? true : categories.includes(mappedCategory);
                 } else if (filterType === "contact") {
-                    matchesFilter = item.getAttribute("data-sender").toLowerCase().includes(filterValue.toLowerCase());
+                    matchesFilter = item.getAttribute("data-sender").toLowerCase().includes(searchTerm);
                 } else if (filterType === "favorite") {
                     matchesFilter = item.getAttribute("data-id") === filterValue;
                 }
@@ -245,6 +260,8 @@ function filterEmails(category, searchTerm = "", filterType = "category", filter
                     item.getAttribute("data-body").toLowerCase().includes(searchTerm);
                 item.style.display = matchesFilter && matchesSearch ? "grid" : "none";
             });
+        } else {
+            generateCalendar();
         }
         updateEmailCounts();
     } catch (err) {
@@ -476,44 +493,44 @@ async function handleEmailClick(event) {
                 try {
                     const response = await fetch(attachmentUrl, {
                         method: 'HEAD',
-                        headers: { Authorization: `Bearer ${ sessionStorage.getItem("gt") }` }
+                        headers: { Authorization: `Bearer ${sessionStorage.getItem("gt")}` }
                     });
                     if (!response.ok) {
                         attachmentsHtml += `
-                    < div class= "attachment-item" >
-                    <img src="${iconPath}" alt="${extension} icon" class="attachment-img" onerror="this.src='/img/extensions/default.svg'">
-                        <span>${attachment.filename} (Non disponibile)</span>
-                    </div>
+                            <div class="attachment-item">
+                                <img src="${iconPath}" alt="${extension} icon" class="attachment-img" onerror="this.src='/img/extensions/default.svg'">
+                                <span>${attachment.filename} (Non disponibile)</span>
+                            </div>
                         `;
                         continue;
                     }
                 } catch (err) {
                     attachmentsHtml += `
-                        < div class= "attachment-item" >
-                        <img src="${iconPath}" alt="${extension} icon" class="attachment-icon" onerror="this.src='/img/extensions/default.svg'">
+                        <div class="attachment-item">
+                            <img src="${iconPath}" alt="${extension} icon" class="attachment-icon" onerror="this.src='/img/extensions/default.svg'">
                             <span>${attachment.filename} (Errore)</span>
                         </div>
                     `;
                     continue;
                 }
                 attachmentsHtml += `
-                        < div class= "attachment-item" >
-                        ${ isImage? `<img src="${attachmentUrl}" alt="${attachment.filename}" class="attachment-preview-img">` : ''}
+                    <div class="attachment-item">
+                        ${isImage ? `<img src="${attachmentUrl}" alt="${attachment.filename}" class="attachment-preview-img">` : ''}
                         <div class="attachment-info">
-                    <img src="${iconPath}" alt="${extension} icon" class="attachment-icon" onerror="this.src='/img/extensions/default.svg'">
-                        <a href="${attachmentUrl}" download="${attachment.filename}">
-                            ${attachment.filename} (${attachment.size ? (attachment.size / 1024).toFixed(2) : '0'} KB)
-                        </a>
-                        ${isImage ? `<button class="view-attachment-btn" data-attachment-url="${attachmentUrl}">Visualizza</button>` : ''}
-                </div>
-                    </div >
-                    `;
+                            <img src="${iconPath}" alt="${extension} icon" class="attachment-icon" onerror="this.src='/img/extensions/default.svg'">
+                            <a href="${attachmentUrl}" download="${attachment.filename}">
+                                ${attachment.filename} (${attachment.size ? (attachment.size / 1024).toFixed(2) : '0'} KB)
+                            </a>
+                            ${isImage ? `<button class="view-attachment-btn" data-attachment-url="${attachmentUrl}">Visualizza</button>` : ''}
+                        </div>
+                    </div>
+                `;
             }
             attachmentsHtml += '</div>';
         }
         if (emailPreviewModal) {
             const previewHeader = emailPreviewModal.querySelector('.email-preview-header h3');
-            if (previewHeader) previewHeader.textContent = subject.substring(0, 50) + (subject.length > 50 ? '...' : '');
+            if (previewHeader) previewHeader.textContent = subject.slice(0, 50) + (subject.length > 50 ? '...' : '');
             if (previewSender) previewSender.textContent = sender;
             if (previewTime) previewTime.textContent = time ? new Date(time).toLocaleString('it-IT', {
                 day: '2-digit',
@@ -523,33 +540,33 @@ async function handleEmailClick(event) {
                 minute: '2-digit',
             }) : 'N/D';
             if (previewBody) previewBody.innerHTML = `
-                    < div class="email-content-body" > ${ sanitizedMainContent || "<p>(Nessun contenuto)</p>" };</div >
-                        ${ sanitizedFooterContent ? `<div class="email-footer">${sanitizedFooterContent}</div>` : '' }
-                ${ attachmentsHtml } `
-            ;
-                toggleModal(emailPreviewModal, true);
-                document.querySelectorAll('.view-attachment-btn').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        const attachmentUrl = btn.getAttribute("data-attachment-url");
-                        try {
-                            window.open(attachmentUrl, '_blank');
-                        } catch (err) {
-                            console.error(err);
-                            alert('Impossibile aprire allegato. Riprova o contatta il supporto.');
-                        }
-                    });
+                <div class="email-content-body">${sanitizedMainContent || "<p>(Nessun contenuto)</p>"}</div>
+                ${sanitizedFooterContent ? `<div class="email-footer">${sanitizedFooterContent}</div>` : ''}
+                ${attachmentsHtml}
+            `;
+            toggleModal(emailPreviewModal, true);
+            document.querySelectorAll('.view-attachment-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const attachmentUrl = btn.getAttribute("data-attachment-url");
+                    try {
+                        window.open(attachmentUrl, '_blank');
+                    } catch (err) {
+                        console.error(err);
+                        alert('Impossibile aprire allegato. Riprova o contatta il supporto.');
+                    }
                 });
-            }
-        } catch (err) {
-            console.error(err);
-            alert(err.message);
+            });
         }
+    } catch (err) {
+        console.error(err);
+        alert(err.message);
     }
+}
 
 function toggleEmailCountVisibility(show) {
     try {
         emailCounts.forEach(count => {
-            count.show.style.display = show ? 'inline-block' : 'none';
+            count.style.display = show ? 'inline-block' : 'none';
         });
     } catch (err) {
         console.error(err);
@@ -558,6 +575,19 @@ function toggleEmailCountVisibility(show) {
 
 function updateEmailCounts() {
     try {
+        const categoryMap = {
+            inbox: 'Posta in arrivo',
+            sent: 'Inviate',
+            important: 'Importanti',
+            meetings: 'Riunioni',
+            calendar: 'Calendario',
+            spam: 'Spam',
+            trash: 'Cestino',
+            promotions: 'Promozioni',
+            toreply: 'Da rispondere',
+            draft: 'Bozze'
+        };
+
         navItems.forEach(item => {
             const category = item.getAttribute("data-filter");
             let count = 0;
@@ -566,21 +596,14 @@ function updateEmailCounts() {
             } else if (category === "calendar") {
                 count = events.length;
             } else {
-                const categoryMap = {
-                    sent: 'Inviata',
-                    important: 'Importante',
-                    meetings: 'Riunioni',
-                    spam: 'Spam',
-                    trash: 'Cestino',
-                    promotions: 'Promozioni',
-                    toReply: 'Da rispondere',
-                    draft: 'Bozze',
-                };
                 const mappedCategory = categoryMap[category] || category;
-                count = document.querySelectorAll(`.email-item[data-categories="${mappedCategory}"]`).length;
+                count = document.querySelectorAll(`.email-item[data-categories~="${mappedCategory}"]`).length;
             }
             const countElement = item.querySelector(".email-count");
-            if (countElement) countElement.textContent = count;
+            if (countElement) {
+                countElement.textContent = count;
+                countElement.style.display = count > 0 && showEmailCountCheckbox.checked ? 'inline-block' : 'none';
+            }
         });
     } catch (err) {
         console.error(err);
@@ -746,7 +769,7 @@ function attachSidebarToggleListeners() {
 
 function debounce(func, wait) {
     let timeout;
-    return function (args) {
+    return function (...args) {
         const later = () => {
             clearTimeout(timeout);
             func(...args);
@@ -763,6 +786,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get("token");
         const error = urlParams.get("error");
+        console.log("Token in sessionStorage:", sessionStorage.getItem("gt"));
         if (error) {
             let errorMessage = "Errore durante il login. Riprova.";
             if (error === "auth_required") errorMessage = "Autenticazione richiesta. Effettua il login.";
@@ -862,7 +886,7 @@ if (searchInput) searchInput.addEventListener("input", debouncedSearch);
 [composeBtn, settingsBtn].forEach(btn => {
     if (btn) btn.addEventListener("click", () => {
         try {
-            toggleModal(btn === composeBtn ? settingsModal : composeModal, true);
+            toggleModal(btn === composeBtn ? composeModal : settingsModal, true);
         } catch (err) {
             console.error(err);
         }
@@ -967,6 +991,7 @@ if (darkThemeCheckbox) darkThemeCheckbox.addEventListener("change", () => {
 if (showEmailCountCheckbox) showEmailCountCheckbox.addEventListener("change", () => {
     try {
         toggleEmailCountVisibility(showEmailCountCheckbox.checked);
+        updateEmailCounts();
     } catch (err) {
         console.error(err);
         alert(err.message);
@@ -1032,7 +1057,7 @@ if (deleteBtn) deleteBtn.addEventListener("click", async () => {
         toggleModal(emailPreviewModal, false);
         currentEmail = null;
         await loadEmailsToPage();
-        filterEmails(currentCategory, searchInput.value.toLowerCase(), currentFilter.type, currentFilter.value);
+        filterEmails(currentCategory, searchInput.value.toLowerCase(), currentFilter.type, "");
     } catch (err) {
         console.error(err);
         alert(err.message);
@@ -1064,10 +1089,11 @@ if (aiReplyBtn) aiReplyBtn.addEventListener("click", async () => {
             alert("Nessuna email selezionata!");
             return;
         }
-        const emailId = currentEmail.getAttribute("id");
-        const response = await fetch(`/api/emails/${emailId}/ai-reply`, {
+        const emailId = currentEmail.getAttribute("data-id");
+        const response = await fetch("/api/ai/reply", {
             method: "POST",
-            headers: { Authorization: `Bearer ${sessionStorage.getItem("gt")}`, "Content-Type": "application/json" }
+            headers: { Authorization: `Bearer ${sessionStorage.getItem("gt")}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ email: { id: emailId, subject: currentEmail.getAttribute("data-subject"), body: currentEmail.getAttribute("data-body") } })
         });
         if (!response.ok) {
             const errorData = await response.json();
@@ -1076,7 +1102,7 @@ if (aiReplyBtn) aiReplyBtn.addEventListener("click", async () => {
         const aiReply = await response.json();
         composeInput.value = currentEmail.getAttribute("data-sender");
         composeSubject.value = `Re: ${currentEmail.getAttribute("data-subject")}`;
-        composeText.value = aiReply.message || "";
+        composeText.value = aiReply.reply || "";
         toggleModal(emailPreviewModal, false);
         toggleModal(composeModal, true);
     } catch (err) {

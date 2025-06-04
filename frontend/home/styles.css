@@ -36,35 +36,17 @@ body.dark {
 }
 
 .left-rectangle,
-.right-rectangle {
-    display: flex;
-    align-items: stretch;
-    justify-content: center;
-    width: 100%;
-    min-width: 120px;
-    height: 85%;
-    background: #ffffff;
-    border-radius: 16px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-    transition: all 0.3s ease;
-    position: sticky;
-    top: 7.5%;
-    z-index: 1;
-}
+
+
 
 body.dark .left-rectangle,
-body.dark .right-rectangle {
-    background: #1e293b;
-    box-shadow: 0 4px 16px rgba(255, 255, 255, 0.05);
-}
+body.dark 
 
 .left-rectangle {
     grid-column: 1;
 }
 
-.right-rectangle {
-    grid-column: 3;
-}
+
 
 .left-toggle,
 .right-toggle {
@@ -310,15 +292,17 @@ body.dark .email-nav {
     font-weight: 600;
     color: #4b5563;
     cursor: pointer;
+    background: #f3f4f6;
     border-radius: 8px;
 }
 
 body.dark .email-nav li {
-    color: #9ca3af;
+    color: #e5e7eb;
+    background: #334155;
 }
 
 .email-nav li:hover {
-    background: linear-gradient(90deg, #0ea5e9, #06b6d4);
+    background: linear-gradient(45deg, #0ea5e9, #06b6d4);
     color: #ffffff;
 }
 
@@ -333,13 +317,14 @@ body.dark .email-nav li.active {
 }
 
 .email-count {
-    background: #ef4444;
+    background-color: #0ea5e9;
     color: #ffffff;
-    font-size: 11px;
-    padding: 4px 8px;
-    border-radius: 12px;
+    font-size: 10px;
+    padding: 3px 5px;
+    border-radius: 15px;
     line-height: 1;
 }
+.email-count:hover { background-color: #333; }
 
 .email-header {
     position: fixed;
@@ -426,18 +411,18 @@ body.dark .email-list {
 
 .email-item {
     display: grid;
-    grid-template-columns: 80px 50px 200px 180px 1fr 140px;
-    padding: 16px 16px;
+    grid-template-columns: 100px 50px 200px 250px 1fr 100px;
+    padding: 12px 16px;
     border-bottom: 1px solid #e5e7eb;
     cursor: pointer;
     align-items: center;
-    transition: all 0.2s ease;
+    gap: 12px;
     min-height: 60px;
-    animation: fadeIn 0.3s ease forwards;
     background: #ffffff;
     margin: 4px 0;
     border-radius: 8px;
-    gap: 6px;
+    transition: background 0.2s ease, transform 0.2s ease;
+    overflow: hidden;
 }
 
 body.dark .email-item {
@@ -455,27 +440,31 @@ body.dark .email-item:hover {
 }
 
 .email-label {
-    width: fit-content;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
-    padding: 4px 8px;
+    padding: 5px 10px;
     border-radius: 6px;
-    text-transform: uppercase;
     text-align: center;
     background: #2563eb;
     color: #ffffff;
     justify-self: center;
+    min-width: 80px;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .email-profile {
     display: flex;
     justify-content: center;
     align-items: center;
+    width: 50px;
 }
 
 .profile-picture {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     object-fit: cover;
     border: 2px solid #e5e7eb;
@@ -492,7 +481,8 @@ body.dark .profile-picture {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    padding-left: 12px;
+    padding-left: 8px;
+    max-width: 200px;
 }
 
 body.dark .email-sender {
@@ -506,7 +496,8 @@ body.dark .email-sender {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    padding-left: 12px;
+    padding-left: 8px;
+    max-width: 250px;
 }
 
 body.dark .email-subject {
@@ -514,12 +505,16 @@ body.dark .email-subject {
 }
 
 .email-preview {
-    font-size: 13px;
+    font-size: 14px;
     color: #6b7280;
+    padding-left: 8px;
+    min-height: 22px;
+    line-height: 1.4;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    padding-left: 12px;
+    min-width: 200px;
 }
 
 body.dark .email-preview {
@@ -527,17 +522,17 @@ body.dark .email-preview {
 }
 
 .email-time {
-    font-size: 13px;
-    color: #111827;
-    justify-content: flex-end;
-    white-space: nowrap;
+    font-size: 12px;
+    color: #6b7280;
     text-align: right;
-    padding-right: 12px;
+    white-space: nowrap;
+    padding-right: 8px;
     font-family: 'Inter', monospace;
+    max-width: 100px;
 }
 
 body.dark .email-time {
-    color: #e5e7eb;
+    color: #9ca3af;
 }
 
 .calendar-section {
@@ -809,7 +804,6 @@ body.dark .settings-body {
 
 .email-preview-body {
     padding: 20px;
-    background: flex;
     max-height: 500px;
     overflow-y: auto;
     line-height: 1.5;
@@ -865,11 +859,6 @@ body.dark #previewBody {
     display: flex;
     gap: 8px;
     justify-content: flex-end;
-    background: flex;
-}
-
-body.dark .email-preview-body {
-    background: #1e293b;
 }
 
 .settings-section {
@@ -966,7 +955,7 @@ body.dark .account-item span {
 }
 
 body.dark .compose-input,
-body.dark .compose-email,
+body.dark .compose-subject,
 body.dark .email-body,
 body.dark .event-body input {
     background: #334155;
@@ -1109,7 +1098,7 @@ body.dark .sidebar-section summary:hover {
 }
 
 .sidebar-section li {
-    font-size: 13px;
+    font-size: 14px;
     color: #6b7280;
     padding: 6px 10px;
     cursor: pointer;
@@ -1133,7 +1122,7 @@ body.dark .sidebar-section li {
 .sidebar-item {
     font-size: 14px;
     font-weight: 500;
-    color: #333;
+    color: #333333;
     padding: 8px 10px;
     cursor: pointer;
     border-radius: 8px;
@@ -1149,7 +1138,7 @@ body.dark .sidebar-item {
 }
 
 body.dark .sidebar-item:hover {
-    background: #333333;
+    background: #334155;
 }
 
 .sidebar-labels {
@@ -1173,7 +1162,7 @@ body.dark .label-header {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 10px;
+    padding: 10px;
     font-size: 14px;
     font-weight: 500;
     background: #f3f4f6;
@@ -1184,8 +1173,8 @@ body.dark .label-header {
 }
 
 body.dark .label-btn {
-    background: #333;
-    color: #555;
+    background: #334155;
+    color: #e5e7eb;
 }
 
 .label-btn:hover {
@@ -1214,14 +1203,14 @@ body.dark .label-btn {
     margin-bottom: 6px;
 }
 
-body.dark .suggestions h4 {
+body.dark .chat-suggestions h4 {
     color: #e5e7eb;
 }
 
 .suggestion-item {
     padding: 10px;
     background: #f3f4f6;
-    color: #333;
+    color: #333333;
     font-size: 13px;
     font-weight: 500;
     border-radius: 6px;
@@ -1230,7 +1219,7 @@ body.dark .suggestions h4 {
 }
 
 body.dark .suggestion-item {
-    background: #333;
+    background: #334155;
     color: #e5e7eb;
 }
 
@@ -1250,7 +1239,7 @@ body.dark .suggestion-item {
 }
 
 body.dark .chat-messages {
-    background: #333;
+    background: #334155;
     border-color: #475569;
 }
 
@@ -1265,13 +1254,13 @@ body.dark .chat-messages {
 
 .chat-message.bot {
     background: #ffffff;
-    color: #333;
+    color: #333333;
     align-self: flex-start;
 }
 
 body.dark .chat-message.bot {
-    background: #1e2933;
-    color: #e5e7;
+    background: #1e293b;
+    color: #e5e7eb;
 }
 
 .chat-message.user {
@@ -1289,18 +1278,19 @@ body.dark .chat-message.bot {
     min-height: 60px;
     padding: 10px 12px;
     border-radius: 5px;
-    border: #ffffff;
+    border: 1px solid #e5e7eb;
     background: #ffffff;
-    color: #333;
+    color: #333333;
 }
 
 body.dark #chatInput {
-    background: #333333;
-    color: #e5e7;
+    background: #334155;
+    color: #e5e7eb;
+    border-color: #475569;
 }
 
 #chatInput:focus {
-    background: #0ea5e9;
+    border-color: #0ea5e9;
     outline: none;
 }
 
@@ -1337,24 +1327,53 @@ body.dark .chat-send-btn {
     color: #ffffff;
 }
 
-
 .chat-clear-btn:hover {
     background: #dc2626;
 }
 
 @media (max-width: 1200px) {
     .container {
-        grid-template-columns: minmax(80px, 60px);
+        grid-template-columns: minmax(80px, 60px) 1fr minmax(80px, 60px);
     }
 
     .left-rectangle,
-    .right-rectangle {
-        min-width: 80px;
-        height: 80%;
-    }
+    
 
     .hero {
         padding: 0 10px;
+    }
+
+    .email-item {
+        grid-template-columns: 80px 40px 150px 200px 1fr 80px;
+        padding: 10px 12px;
+        gap: 8px;
+    }
+
+    .email-label {
+        font-size: 11px;
+        padding: 4px 8px;
+        min-width: 60px;
+    }
+
+    .profile-picture {
+        width: 32px;
+        height: 32px;
+    }
+
+    .email-sender,
+    .email-subject,
+    .email-preview {
+        font-size: 13px;
+        padding-left: 6px;
+    }
+
+    .email-time {
+        font-size: 11px;
+        padding-right: 6px;
+    }
+
+    .email-preview {
+        min-height: 18px;
     }
 }
 
@@ -1373,34 +1392,16 @@ body.dark .chat-send-btn {
     }
 
     .left-rectangle,
-    .right-rectangle {
-        display: none;
-        position: fixed;
-        top: 0;
-        height: 100%;
-        width: 250px;
-        min-width: 0;
-        z-index: 60;
-        transform: translateX(-100%);
-        transition: transform 0.3s ease;
-        border-radius: 0 16px 16px 0;
-    }
+    
 
-    .right-rectangle {
-        right: 0;
-        transform: translateX(100%);
-        border-radius: 16px 0 0 16px;
-    }
+    
 
     .left-rectangle.active {
         display: block;
         transform: translateX(0);
     }
 
-    .right-rectangle.active {
-        display: block;
-        transform: translateX(0);
-    }
+    
 
     .left-toggle,
     .right-toggle {
@@ -1447,7 +1448,7 @@ body.dark .chat-send-btn {
 
     .email-item {
         grid-template-columns: 50px 1fr;
-        grid-template-rows: auto auto auto;
+        grid-template-rows: auto auto auto auto;
         padding: 8px 12px;
         gap: 8px;
     }
@@ -1455,6 +1456,9 @@ body.dark .chat-send-btn {
     .email-label {
         grid-column: 1;
         grid-row: 1;
+        font-size: 10px;
+        padding: 3px 6px;
+        min-width: 40px;
     }
 
     .email-profile {
@@ -1466,22 +1470,31 @@ body.dark .chat-send-btn {
         grid-column: 2;
         grid-row: 1;
         padding-left: 8px;
+        font-size: 13px;
     }
 
     .email-subject {
         grid-column: 2;
         grid-row: 2;
         padding-left: 8px;
+        font-size: 13px;
     }
 
     .email-preview {
         grid-column: 1 / 3;
         grid-row: 3;
         padding-left: 0;
+        font-size: 12px;
+        min-height: 18px;
     }
 
     .email-time {
-        display: none;
+        grid-column: 2;
+        grid-row: 4;
+        padding-right: 8px;
+        text-align: right;
+        font-size: 11px;
+        display: block;
     }
 
     .overlay.active {
@@ -1504,8 +1517,9 @@ body.dark .chat-send-btn {
     }
 
     .header-actions {
-        flex-wrap: wrap;
+        display: flex;
         gap: 6px;
+        flex-wrap: wrap;
     }
 
     .email-limit,
@@ -1530,6 +1544,34 @@ body.dark .chat-send-btn {
 
     .email-item {
         padding: 8px 10px;
+        gap: 6px;
+    }
+
+    .email-label {
+        font-size: 9px;
+        padding: 3px 5px;
+        min-width: 35px;
+    }
+
+    .profile-picture {
+        width: 28px;
+        height: 28px;
+    }
+
+    .email-sender,
+    .email-subject {
+        font-size: 12px;
+        padding-left: 6px;
+    }
+
+    .email-preview {
+        font-size: 11px;
+        min-height: 16px;
+    }
+
+    .email-time {
+        font-size: 10px;
+        padding-right: 6px;
     }
 
     .calendar-grid {
@@ -1565,45 +1607,267 @@ body.dark .chat-send-btn {
 
 .label-inbox {
     background-color: #2563eb;
-    color: #fff;
+    color: #ffffff;
 }
 
 .label-sent {
     background-color: #16a34a;
-    color: #fff;
+    color: #ffffff;
 }
 
 .label-trash {
     background-color: #6b7280;
-    color: #fff;
+    color: #ffffff;
 }
 
 .label-spam {
     background-color: #ef4444;
-    color: #fff;
+    color: #ffffff;
 }
 
 .label-important {
     background-color: #f59e0b;
-    color: #fff;
+    color: #ffffff;
 }
 
 .label-meetings {
     background-color: #0891b2;
-    color: #000;
+    color: #ffffff;
 }
 
 .label-tui {
     background-color: #6b7280;
-    color: #fff;
+    color: #ffffff;
 }
 
 .label-toreply {
     background-color: #f87171;
-    color: #fff;
+    color: #ffffff;
 }
 
 .label-promotions {
     background-color: #f59e0b;
-    color: #fff;
+    color: #ffffff;
+}
+
+/* === Updated right-rectangle and chatbox styles === */
+
+.right-rectangle {
+    position: fixed;
+    right: 0;
+    top: 0;
+    width: 320px;
+    height: 100%;
+    background: #ffffff;
+    border-radius: 16px 0 0 16px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    z-index: 60;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    padding: 16px;
+}
+
+.right-rectangle.active {
+    transform: translateX(0);
+}
+
+body.dark .right-rectangle {
+    background: #1e293b;
+    box-shadow: 0 4px 16px rgba(255, 255, 255, 0.05);
+}
+
+.chatbox {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+#chatMessages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    margin-bottom: 12px;
+}
+
+body.dark #chatMessages {
+    background: #334155;
+    border-color: #475569;
+}
+
+.chat-message {
+    padding: 10px 14px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    font-size: 14px;
+    max-width: 80%;
+    line-height: 1.5;
+}
+
+.chat-message.user {
+    background-color: #0ea5e9;
+    color: #ffffff;
+    align-self: flex-end;
+}
+
+.chat-message.bot {
+    background-color: #e2e8f0;
+    color: #111827;
+    align-self: flex-start;
+}
+
+body.dark .chat-message.bot {
+    background-color: #1e293b;
+    color: #e5e7eb;
+}
+
+.suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.suggestion-item {
+    background: #f3f4f6;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.suggestion-item:hover {
+    background: #e2e8f0;
+}
+
+body.dark .suggestion-item {
+    background: #334155;
+    color: #e5e7eb;
+}
+
+body.dark .suggestion-item:hover {
+    background: #475569;
+}
+
+.chat-input-container {
+    display: flex;
+    gap: 8px;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 10px;
+}
+
+.chat-input-container input {
+    flex: 1;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    font-size: 14px;
+}
+
+.chat-send-btn,
+.chat-clear-btn {
+    padding: 10px 14px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.chat-send-btn {
+    background: #111827;
+    color: #ffffff;
+}
+
+.chat-clear-btn {
+    background: #6b7280;
+    color: #ffffff;
+}
+
+.chat-send-btn:hover {
+    background: #0ea5e9;
+}
+
+.chat-clear-btn:hover {
+    background: #dc2626;
+}
+
+body.dark .chat-send-btn {
+    background: #e5e7eb;
+    color: #111827;
+}
+
+body.dark .chat-clear-btn {
+    background: #475569;
+    color: #ffffff;
+}
+
+
+/* === Updated left-rectangle styles === */
+
+.left-rectangle {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 280px;
+    height: 100%;
+    background: #ffffff;
+    border-radius: 0 16px 16px 0;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    z-index: 60;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    padding: 16px;
+}
+
+.left-rectangle.active {
+    transform: translateX(0);
+}
+
+body.dark .left-rectangle {
+    background: #1e293b;
+    box-shadow: 0 4px 16px rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-section .section-divider {
+    margin: 16px 0 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #6b7280;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 4px;
+}
+
+body.dark .sidebar-section .section-divider {
+    color: #e5e7eb;
+    border-color: #475569;
+}
+
+.sidebar-company-info {
+    margin-top: auto;
+    font-size: 12px;
+    color: #6b7280;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 12px;
+}
+
+body.dark .sidebar-company-info {
+    color: #9ca3af;
+    border-color: #475569;
+}
+
+.sidebar-company-info a {
+    color: #0ea5e9;
+    text-decoration: none;
+}
+
+.sidebar-company-info a:hover {
+    text-decoration: underline;
 }

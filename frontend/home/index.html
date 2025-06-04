@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Email Client</title>
+    <title>inboxit</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
@@ -15,15 +15,11 @@
     <button class="left-toggle"><i class="fas fa-bars"></i></button>
     <button class="right-toggle"><i class="fas fa-comment"></i></button>
     <div class="container">
-        <div class="left-rectangle">
+        <div class="left-rectangle active">
             <div class="sidebar-content">
                 <div class="sidebar-title">Menu</div>
                 <div class="sidebar-section">
-                    <div class="sidebar-item compose-btn" data-modal="compose-modal">Scrivi</div>
-                    <div class="sidebar-item" data-filter="inbox">Posta in arrivo</div>
-                    <div class="sidebar-item" data-filter="sent">Inviate</div>
-                    <div class="sidebar-item" data-filter="trash">Cestino</div>
-                    <div class="sidebar-item" data-filter="spam">Spam</div>
+                    <div class="section-divider">Etichette rapide</div>
                     <details>
                         <summary>Altro</summary>
                         <ul>
@@ -33,16 +29,30 @@
                             <li data-filter="promotions">Promozioni</li>
                         </ul>
                     </details>
+
+                    <div class="section-divider">Preferiti</div>
+                    <div class="sidebar-item" data-filter="favorites">Email preferite</div>
+
+                    <div class="section-divider">Contatti</div>
+                    <div class="sidebar-item" data-filter="contacts">Rubrica</div>
                 </div>
+
                 <div class="sidebar-labels">
                     <div class="label-header">Etichette</div>
                     <button class="label-btn">Aggiungi etichetta</button>
                 </div>
+
+                <div class="sidebar-company-info">
+                    <p><strong><u>inboxit</u></strong><br>
+                        Realizzato da <a href="#" target="_blank">inboxit.com</a><br>
+                        © 2025 Tutti i diritti riservati</p>
+                </div>
             </div>
         </div>
+
         <div class="hero">
             <header class="app-header">
-                <div class="app-title">Email Client</div>
+                <div class="app-title">inboxit</div>
                 <div class="search-bar">
                     <input type="text" id="searchInput" placeholder="Cerca email...">
                 </div>
@@ -66,23 +76,31 @@
             <nav class="email-nav">
                 <ul>
                     <li class="active" data-filter="inbox"><i class="fas fa-inbox"></i> Posta in arrivo <span
-                            class="email-count">3</span></li>
-                    <li data-filter="sent"><i class="fas fa-paper-plane"></i> Inviata</li>
-                    <li data-filter="trash"><i class="fas fa-trash"></i> Cestino</li>
-                    <li data-filter="spam"><i class="fas fa-exclamation-triangle"></i> Spam</li>
-                    <li data-filter="important"><i class="fas fa-star"></i> Importante</li>
-                    <li data-filter="meetings"><i class="fas fa-video"></i> Riunioni</li>
-                    <li data-filter="toreply"><i class="fas fa-reply"></i> Da rispondere</li>
-                    <li data-filter="promotions"><i class="fas fa-tags"></i> Promozioni</li>
+                            class="email-count">0</span></li>
+                    <li data-filter="sent"><i class="fas fa-paper-plane"></i> Inviate <span class="email-count">0</span>
+                    </li>
+                    <li data-filter="trash"><i class="fas fa-trash"></i> Cestino <span class="email-count">0</span></li>
+                    <li data-filter="spam"><i class="fas fa-exclamation-triangle"></i> Spam <span
+                            class="email-count">0</span></li>
+                    <li data-filter="important"><i class="fas fa-star"></i> Importante <span
+                            class="email-count">0</span></li>
+                    <li data-filter="meetings"><i class="fas fa-video"></i> Riunioni <span class="email-count">0</span>
+                    </li>
+                    <li data-filter="toreply"><i class="fas fa-reply"></i> Da rispondere <span
+                            class="email-count">0</span></li>
+                    <li data-filter="promotions"><i class="fas fa-tags"></i> Promozioni <span
+                            class="email-count">0</span></li>
+                    <li data-filter="calendar"><i class="fas fa-calendar"></i> Calendario <span
+                            class="email-count">0</span></li>
                 </ul>
             </nav>
             <div class="email-header">
                 <div>Etichetta</div>
-                <div></div>
+                <div>Profilo</div>
                 <div>Mittente</div>
                 <div>Oggetto</div>
                 <div>Anteprima</div>
-                <div>Ora</div>
+                <div>Data</div>
             </div>
             <main class="main-app">
                 <div class="email-list">
@@ -117,26 +135,25 @@
                 </section>
             </main>
         </div>
-        <div class="right-rectangle">
-            <div class="chat-box">
-                <div class="chat-suggestions">
-                    <h4>Suggerimenti</h4>
-                    <div class="suggestion-item">Rispondi rapidamente</div>
-                    <div class="suggestion-item">Organizza riunione</div>
+        <div class="right-rectangle active">
+            <h1 style="padding-bottom: 15px;"><u>inboxit AI</u></h1>
+            <div class="chatbox">
+                <div id="chatMessages" class="chat-messages"></div>
+
+                <div class="suggestions">
+                    <span class="suggestion-item">Imposta tema scuro</span>
+                    <span class="suggestion-item">Scriviamo una mail a...</span>
+                    <span class="suggestion-item">Come effettuo il logout?</span>
                 </div>
-                <div id="chatMessages" class="chat-messages">
-                    <div class="chat-message bot">Ciao! Come posso aiutarti?</div>
-                    <div class="chat-message user">Ho bisogno di una bozza email.</div>
-                </div>
-                <div class="chat-input-area">
-                    <textarea id="chatInput" placeholder="Scrivi un messaggio..."></textarea>
-                    <div class="chat-buttons">
-                        <button class="chat-send-btn">Invia</button>
-                        <button class="chat-clear-btn">Cancella</button>
-                    </div>
+
+                <div class="chat-input-container">
+                    <input id="chatInput" type="text" placeholder="Scrivi..." />
+                    <button class="chat-send-btn">Invia</button>
+                    <button class="chat-clear-btn">Cancella</button>
                 </div>
             </div>
         </div>
+
     </div>
     <div id="compose-modal" class="compose-modal">
         <div class="compose-header">
