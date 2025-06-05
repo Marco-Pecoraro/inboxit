@@ -1,0 +1,350 @@
+@import url('base.css');
+
+.hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1400px;
+    margin: 4rem auto;
+    padding: 0 5%;
+}
+
+.hero-content {
+    max-width: 45%;
+}
+
+.hero h1 {
+    font-size: clamp(2rem, 6vw, 3rem);
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+}
+
+.hero p {
+    font-size: clamp(1rem, 3vw, 1.1rem);
+    font-weight: 400;
+    margin-bottom: 2rem;
+}
+
+.hero-cta {
+    display: inline-block;
+}
+
+.trust-text {
+    margin-top: 1.5rem;
+    font-size: clamp(0.8rem, 2vw, 0.9rem);
+}
+
+.gmail-logo {
+    width: 50px;
+    vertical-align: middle;
+}
+
+.hero-visual {
+    max-width: 50%;
+}
+
+.hero-image {
+    max-width: 100%;
+}
+
+.trust-badges {
+    padding: 2rem 5%;
+    text-align: center;
+}
+
+.badges {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+}
+
+.badge {
+    background: var(--bg-light);
+    padding: 0.8rem 1.2rem;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.3s, color 0.3s;
+}
+
+.badge:hover {
+    background: var(--accent);
+    color: var(--bg-light);
+}
+
+.features {
+    padding: 4rem 5%;
+}
+
+.features h2,
+.stories h2,
+.cta-final h2,
+.contact h2 {
+    text-align: center;
+    font-size: clamp(2rem, 5vw, 2.5rem);
+    font-weight: 700;
+    margin-bottom: 2.5rem;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.feature-card {
+    background: var(--bg-light);
+    padding: clamp(1rem, 3vw, 1.5rem);
+    border-radius: 24px;
+    box-shadow: var(--shadow);
+    text-align: center;
+    will-change: transform;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.feature-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.feature-icon {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+}
+
+.feature-card:hover .feature-icon {
+    color: var(--accent);
+}
+
+.feature-card h3 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.feature-card p {
+    font-size: 0.9rem;
+}
+
+.features-text {
+    max-width: 800px;
+    margin: 2rem auto 0;
+    text-align: center;
+    font-size: clamp(0.9rem, 2vw, 1rem);
+    color: var(--text);
+}
+
+.stories {
+    padding: 4rem 5%;
+    background: #f8f8f8;
+}
+
+.story-carousel {
+    display: flex;
+    gap: 1.5rem;
+    scroll-snap-type: x mandatory;
+    overflow-x: hidden;
+    padding-bottom: 1rem;
+}
+
+.story-carousel::-webkit-scrollbar {
+    display: none;
+}
+
+.story {
+    flex: 0 0 clamp(180px, 30vw, 250px);
+    background: var(--bg-light);
+    padding: 1.5rem;
+    border-radius: 24px;
+    box-shadow: var(--shadow);
+    scroll-snap-align: start;
+}
+
+.avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    margin-bottom: 1rem;
+    object-fit: cover;
+}
+
+.story p {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.story blockquote {
+    font-size: 0.9rem;
+    font-style: italic;
+}
+
+.carousel-controls {
+    text-align: center;
+    margin-top: 1rem;
+}
+
+.carousel-prev,
+.carousel-next {
+    font-size: 1.8rem;
+    cursor: pointer;
+    display: inline-block;
+    margin: 0 1rem;
+    color: var(--primary);
+}
+
+.carousel-prev:hover,
+.carousel-next:hover {
+    color: var(--accent);
+}
+
+.cta-final {
+    text-align: center;
+    padding: 4rem 5%;
+    background: var(--bg-dark);
+    color: var(--bg-light);
+}
+
+.cta-final .button {
+    background: var(--bg-light);
+    color: var(--primary);
+}
+
+.contact {
+    max-width: 700px;
+    margin: 4rem auto;
+    padding: 0 5%;
+}
+
+.contact h2 {
+    line-height: 1.2;
+    margin-bottom: 1.5rem;
+}
+
+.contact h2 span {
+    display: inline;
+}
+
+.contact h2 .centered {
+    display: block;
+}
+
+.contact-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.contact-form input {
+    padding: clamp(0.8rem, 2vw, 1rem);
+    border: 1px solid var(--primary);
+    border-radius: 12px;
+    font-size: 0.9rem;
+}
+
+.contact-form button {
+    background: var(--primary);
+    color: var(--bg-light);
+    padding: 0.6rem 1.5rem;
+    border-radius: 30px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.contact-form button:hover {
+    background: var(--accent);
+    color: var(--bg-light);
+}
+
+.sticky-cta {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+}
+
+.adaptive-button {
+    background: white;
+    color: black;
+    mix-blend-mode: difference;
+    border-radius: 30px;
+    padding: 0.7rem 1.5rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.3s;
+}
+
+
+.adaptive-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 768px) {
+    .hero {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .hero-content,
+    .hero-visual {
+        max-width: 100%;
+    }
+
+    .hero-visual {
+        margin-top: 2rem;
+    }
+
+    .badges {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .story {
+        flex: 0 0 180px;
+    }
+
+    .contact-form button {
+        background: var(--bg-light);
+        color: var(--primary);
+    }
+
+    .contact-form button:hover {
+        background: var(--accent);
+        color: var(--bg-light);
+    }
+}
+
+@media (max-width: 600px) {
+
+    .hero h1,
+    .features h2,
+    .stories h2,
+    .cta-final h2,
+    .contact h2 {
+        font-size: clamp(1.6rem, 4vw, 2rem);
+    }
+
+    .hero p {
+        font-size: 0.9rem;
+    }
+
+    .hero-cta {
+        padding: 0.8rem 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .contact {
+        max-width: 100%;
+    }
+
+    .grid {
+        grid-template-columns: 1fr;
+    }
+}

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>inboxit > Login</title>
+    <link rel="icon" href="/frontend/img/inboxit-logo.png">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <div id="logo">
+            <u>inboxit</u>
+        </div>
+        <div id="sub-content" class="hidden">
+            <p>Gestisci le tue email in modo semplice e veloce</p>
+            <p>Accedi con il tuo account Google</p>
+            <a href="/auth/google" class="google-btn">
+                <img src="../img/google-logo.png" alt="google-logo">Accedi con Google
+            </a>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const logo = document.querySelector('#logo');
+            const subContent = document.querySelector('#sub-content');
+
+            setTimeout(() => {
+                logo.classList.add('animate');
+                subContent.classList.remove('hidden');
+                subContent.classList.add('fade-in');
+            }, 1000);
+
+            // Gestione eventuali errori
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('error')) {
+                alert('Errore durante il login. Riprova.');
+            }
+        });
+    </script>
+</body>
+
+</html>
